@@ -1265,11 +1265,13 @@ local NUM_CONDITIONS = 3
 local reCondTypes  = {}   -- current condition type index per condition row
 local reCondBoxes  = {}   -- EditBox per condition row
 local reCondBtns   = {}   -- type cycle button per condition row
+local reAndLabels  = {}   -- AND labels between rows
+local reVisibleConds = 1  -- how many condition rows are shown
 
 local function GetCondLabel(typeIdx)
     local ct = CH.conditionTypes[typeIdx]
     if ct then return ct.label end
-    return "None"
+    return "(none)"
 end
 
 local condStartY = -108
@@ -1277,17 +1279,17 @@ local condRowH   = 44
 
 for ci = 1, NUM_CONDITIONS do
     if ci > 1 then
-        -- AND label
         local andLbl = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         andLbl:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, condStartY - (ci - 1) * condRowH - 6)
         andLbl:SetText("AND")
         andLbl:SetTextColor(0.6, 0.6, 0.6, 1)
+        andLbl:Hide()
+        reAndLabels[ci] = andLbl
     end
 
     local condY = condStartY - (ci - 1) * condRowH
 
-    -- Condition type dropdown
-    reCondTypes[ci] = 1
+    reCondTypes[ci] = 0
     local typeBtnY = condY - 16
     local closureCI = ci
     local typeBtn = MakeDropdown(ruleEditor, 190, 20,
@@ -1314,19 +1316,67 @@ for ci = 1, NUM_CONDITIONS do
             end
         end
     )
-    typeBtn:SetText(GetCondLabel(1))
+    typeBtn:SetText("(none)")
     typeBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, typeBtnY)
     reCondBtns[ci] = typeBtn
 
-    -- Param EditBox
     local eb = CreateFrame("EditBox", "CooldownHUD_RECondBox" .. ci, ruleEditor, "InputBoxTemplate")
     eb:SetWidth(80)
     eb:SetHeight(18)
     eb:SetPoint("LEFT", typeBtn, "RIGHT", 8, 0)
     eb:SetAutoFocus(false)
-    eb:Hide()   -- hidden until condition hasParam = true
+    eb:Hide()
     reCondBoxes[ci] = eb
+
+    -- Hide rows 2+ by default
+    if ci > 1 then
+        typeBtn:Hide()
+        eb:Hide()
+    end
 end
+
+-- Show/hide condition rows based on reVisibleConds
+local function UpdateCondRowVisibility()
+    for ci = 1, NUM_CONDITIONS do
+        if ci <= reVisibleConds then
+            reCondBtns[ci]:Show()
+            -- Show param box only if condition has param
+            if reCondTypes[ci] and reCondTypes[ci] > 0 then
+                local ct = CH.conditionTypes[reCondTypes[ci]]
+                if ct and ct.hasParam then
+                    reCondBoxes[ci]:Show()
+                end
+            end
+            if ci > 1 and reAndLabels[ci] then
+                reAndLabels[ci]:Show()
+            end
+        else
+            reCondBtns[ci]:Hide()
+            reCondBoxes[ci]:Hide()
+            if reAndLabels[ci] then
+                reAndLabels[ci]:Hide()
+            end
+        end
+    end
+    -- Show/hide the add button
+    if reVisibleConds < NUM_CONDITIONS then
+        reAddCondBtn:Show()
+        reAddCondBtn:ClearAllPoints()
+        local btnY = condStartY - reVisibleConds * condRowH - 6
+        reAddCondBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, btnY)
+    else
+        reAddCondBtn:Hide()
+    end
+end
+
+-- "+ Add Condition" button
+local reAddCondBtn = MakeButton(ruleEditor, 120, 20, "+ Add Condition")
+reAddCondBtn:SetScript("OnClick", function()
+    if reVisibleConds < NUM_CONDITIONS then
+        reVisibleConds = reVisibleConds + 1
+        UpdateCondRowVisibility()
+    end
+end)
 
 -- ---- Save Button ----
 local reSaveBtn = MakeButton(ruleEditor, 80, 22, "Save")
@@ -1422,6 +1472,8 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         reActionDesc:SetText(CH.ruleActions[reActionIndex].desc or "")
         -- Pre-populate conditions
         local editConds = reEditingRule.rule.conditions or {}
+        local numEditConds = table.getn(editConds)
+        reVisibleConds = math.max(1, numEditConds)
         for ci = 1, NUM_CONDITIONS do
             local cond = editConds[ci]
             if cond then
@@ -1436,18 +1488,16 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
                 local ct = CH.conditionTypes[typeIdx]
                 if ct and ct.hasParam then
                     reCondBoxes[ci]:SetText(condParam ~= nil and tostring(condParam) or "")
-                    reCondBoxes[ci]:Show()
                 else
                     reCondBoxes[ci]:SetText("")
-                    reCondBoxes[ci]:Hide()
                 end
             else
                 reCondTypes[ci] = 0
                 reCondBtns[ci]:SetText("(none)")
                 reCondBoxes[ci]:SetText("")
-                reCondBoxes[ci]:Hide()
             end
         end
+        UpdateCondRowVisibility()
     else
         reTitle:SetText("New Rule")
         if table.getn(reSpellNames) > 0 then
@@ -1459,13 +1509,14 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         reActionIndex = 1
         reActionBtn:SetText(CH.ruleActions[1].label)
         reActionDesc:SetText(CH.ruleActions[1].desc or "")
-        -- Reset conditions — default to (none) for empty slots
+        -- Reset conditions — start with 1 visible row
+        reVisibleConds = 1
         for ci = 1, NUM_CONDITIONS do
             reCondTypes[ci] = 0
             reCondBtns[ci]:SetText("(none)")
             reCondBoxes[ci]:SetText("")
-            reCondBoxes[ci]:Hide()
         end
+        UpdateCondRowVisibility()
     end
     ruleEditor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     ruleEditor:Show()

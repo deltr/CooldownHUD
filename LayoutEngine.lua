@@ -189,6 +189,7 @@ dragHandle:SetScript("OnMouseUp", function()
     CH.db.posY = math.floor(fy - cy + 0.5)
 
     CH:ApplyLayout()
+    CH:SaveSpecData()
 end)
 
 -- OnUpdate tracker: real-time position sync while dragging
@@ -367,17 +368,66 @@ end
 
 -- INIT: load layout, then hide if not in combat
 CH:RegisterEvent("INIT", function()
+    CH:LoadSpecData()
+    CH.prevSpecKey = CH:GetSpecKey()
     CH:LoadLayout()
     if not CH.inCombat then
         CH:HideAllIcons()
     end
 end)
 
--- SPEC_CHANGED: clear overrides and reload from preset for the new spec
-CH:RegisterEvent("SPEC_CHANGED", function()
-    if CH.db then
-        CH.db.rows = nil
+-- Per-spec save/restore: stores rows, customRules, disabledPresetRules, posX, posY
+local SPEC_FIELDS = { "rows", "customRules", "disabledPresetRules", "posX", "posY" }
+
+function CH:GetSpecKey()
+    local class = CH.playerClass
+    local spec  = CH:GetActiveSpec()
+    if class and spec then return class .. "_" .. spec end
+    return nil
+end
+
+function CH:SaveSpecData()
+    if not CH.db then return end
+    local key = CH:GetSpecKey()
+    if not key then return end
+    if not CH.db.specData then CH.db.specData = {} end
+    if not CH.db.specData[key] then CH.db.specData[key] = {} end
+    for _, field in ipairs(SPEC_FIELDS) do
+        CH.db.specData[key][field] = CH.db[field]
     end
+end
+
+function CH:LoadSpecData()
+    if not CH.db then return end
+    local key = CH:GetSpecKey()
+    if not key then return end
+    local saved = CH.db.specData and CH.db.specData[key]
+    for _, field in ipairs(SPEC_FIELDS) do
+        if saved and saved[field] ~= nil then
+            CH.db[field] = saved[field]
+        else
+            CH.db[field] = nil
+        end
+    end
+end
+
+-- SPEC_CHANGED: save old spec data, load new spec data, reload layout
+CH.prevSpecKey = nil
+
+CH:RegisterEvent("SPEC_CHANGED", function()
+    -- Save outgoing spec's customizations
+    if CH.prevSpecKey and CH.db then
+        if not CH.db.specData then CH.db.specData = {} end
+        if not CH.db.specData[CH.prevSpecKey] then CH.db.specData[CH.prevSpecKey] = {} end
+        for _, field in ipairs(SPEC_FIELDS) do
+            CH.db.specData[CH.prevSpecKey][field] = CH.db[field]
+        end
+    end
+    -- Load incoming spec's customizations
+    CH:LoadSpecData()
+    CH.prevSpecKey = CH:GetSpecKey()
+    -- Invalidate rules cache since customRules/disabledPresetRules may have changed
+    CH:InvalidateRulesCache()
     CH:LoadLayout()
     if not CH.inCombat and not CH.testMode then
         CH:HideAllIcons()

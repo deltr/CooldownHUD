@@ -196,6 +196,8 @@ local cachedRules = nil
 
 function CH:InvalidateRulesCache()
     cachedRules = nil
+    -- Persist rule changes to per-spec storage
+    if CH.SaveSpecData then CH:SaveSpecData() end
 end
 
 -- Extract actions from a rule as a set. Supports both:

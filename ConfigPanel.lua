@@ -1841,6 +1841,8 @@ function CH:SaveRowOverrides()
             table.insert(CH.db.rows[i].spells, sn)
         end
     end
+    -- Also persist to per-spec storage
+    CH:SaveSpecData()
 end
 
 -------------------------------------------------------------------------------

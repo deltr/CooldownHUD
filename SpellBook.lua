@@ -46,12 +46,15 @@ function CH:GetSpellIcon(spellName)
 end
 
 -- Returns a sorted array of all spell names currently in the cache.
+-- Special tracker entries (starting with "_") are appended at the end.
 function CH:GetAllSpellNames()
     local names = {}
     for name, _ in pairs(self.spellCache) do
         table.insert(names, name)
     end
     table.sort(names)
+    -- Append special trackers
+    table.insert(names, "_SealTracker")
     return names
 end
 

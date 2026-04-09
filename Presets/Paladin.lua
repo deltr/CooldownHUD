@@ -17,7 +17,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 scale = 55,
-                spells = { "Divine Shield", "Blessing of Freedom", "Blessing of Protection" },
+                spells = { "_SealTracker", "Divine Shield", "Blessing of Freedom", "Blessing of Protection" },
             },
         },
         glowRules = {
@@ -56,7 +56,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 scale = 55,
-                spells = { "Divine Shield", "Blessing of Sacrifice", "Blessing of Protection", "Blessing of Freedom" },
+                spells = { "_SealTracker", "Divine Shield", "Blessing of Sacrifice", "Blessing of Protection", "Blessing of Freedom" },
             },
         },
         glowRules = {
@@ -95,7 +95,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 scale = 55,
-                spells = { "Divine Shield", "Lay on Hands", "Blessing of Protection", "Blessing of Freedom" },
+                spells = { "_SealTracker", "Divine Shield", "Lay on Hands", "Blessing of Protection", "Blessing of Freedom" },
             },
         },
         glowRules = {

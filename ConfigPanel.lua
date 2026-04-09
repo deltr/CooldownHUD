@@ -1232,6 +1232,14 @@ reActionLabel:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -68)
 reActionLabel:SetText("Action:")
 
 local reActionIndex = 1
+
+-- Action description (must be created before the dropdown that references it)
+local reActionDesc = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+reActionDesc:SetPoint("TOPLEFT", reActionLabel, "BOTTOMLEFT", 0, -4)
+reActionDesc:SetWidth(310)
+reActionDesc:SetJustifyH("LEFT")
+reActionDesc:SetTextColor(0.6, 0.6, 0.6)
+
 local reActionBtn = MakeDropdown(ruleEditor, 200, 22,
     function()
         local out = {}
@@ -1249,13 +1257,6 @@ local reActionBtn = MakeDropdown(ruleEditor, 200, 22,
 )
 reActionBtn:SetText(CH.ruleActions[1].label)
 reActionBtn:SetPoint("LEFT", reActionLabel, "RIGHT", 8, 0)
-
--- Action description
-local reActionDesc = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-reActionDesc:SetPoint("TOPLEFT", reActionLabel, "BOTTOMLEFT", 0, -4)
-reActionDesc:SetWidth(310)
-reActionDesc:SetJustifyH("LEFT")
-reActionDesc:SetTextColor(0.6, 0.6, 0.6)
 
 -- ---- Condition Rows ----
 local NUM_CONDITIONS = 3

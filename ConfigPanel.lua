@@ -748,6 +748,23 @@ local function ActionLabel(actionId)
     return id
 end
 
+-- Build label for multiple actions
+local function ActionsLabel(rule)
+    if rule.actions then
+        local parts = {}
+        for _, aid in ipairs(rule.actions) do
+            table.insert(parts, ActionLabel(aid))
+        end
+        if table.getn(parts) == 0 then return ActionLabel("glow") end
+        local s = parts[1]
+        for i = 2, table.getn(parts) do
+            s = s .. " + " .. parts[i]
+        end
+        return s
+    end
+    return ActionsLabel(rule)
+end
+
 -- Build a one-line condition summary
 local function ConditionSummary(conditions)
     if not conditions or table.getn(conditions) == 0 then
@@ -892,7 +909,7 @@ function CH:RefreshRulesTab()
             condLbl:SetPoint("TOPLEFT", togBtn, "BOTTOMLEFT", 56, -2)
             condLbl:SetWidth(contentW - 110)
             condLbl:SetJustifyH("LEFT")
-            condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
+            condLbl:SetText("|cffffff00" .. ActionsLabel(rule) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
             table.insert(ruleRows, entryFr)
@@ -958,7 +975,7 @@ function CH:RefreshRulesTab()
             condLbl:SetPoint("TOPLEFT", nameLbl, "BOTTOMLEFT", 0, -2)
             condLbl:SetWidth(contentW - 80)
             condLbl:SetJustifyH("LEFT")
-            condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
+            condLbl:SetText("|cffffff00" .. ActionsLabel(rule) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
             table.insert(ruleRows, entryFr)
@@ -1182,7 +1199,7 @@ end)
 
 local ruleEditor = CreateFrame("Frame", "CooldownHUD_RuleEditor", UIParent)
 ruleEditor:SetWidth(340)
-ruleEditor:SetHeight(320)
+ruleEditor:SetHeight(340)
 ruleEditor:SetFrameStrata("FULLSCREEN")
 ruleEditor:SetMovable(true)
 ruleEditor:SetClampedToScreen(true)
@@ -1228,37 +1245,45 @@ local reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
 )
 reSpellBtn:SetPoint("LEFT", reSpellLabel, "RIGHT", 8, 0)
 
--- ---- Action Selector ----
+-- ---- Action Selector (multi-select toggle buttons) ----
 local reActionLabel = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 reActionLabel:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -68)
-reActionLabel:SetText("Action:")
+reActionLabel:SetText("Actions:")
 
-local reActionIndex = 1
+local reSelectedActions = {}  -- actionId -> true/false
+local reActionToggles = {}    -- actionId -> button
 
--- Action description (must be created before the dropdown that references it)
-local reActionDesc = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-reActionDesc:SetPoint("TOPLEFT", reActionLabel, "BOTTOMLEFT", 0, -4)
-reActionDesc:SetWidth(310)
-reActionDesc:SetJustifyH("LEFT")
-reActionDesc:SetTextColor(0.6, 0.6, 0.6)
-
-local reActionBtn = MakeDropdown(ruleEditor, 200, 22,
-    function()
-        local out = {}
-        for i = 1, table.getn(CH.ruleActions) do
-            local a = CH.ruleActions[i]
-            table.insert(out, { label = a.label, value = i })
+local function UpdateActionToggleAppearance()
+    for _, a in ipairs(CH.ruleActions) do
+        local btn = reActionToggles[a.id]
+        if btn then
+            if reSelectedActions[a.id] then
+                btn:SetText("|cffffff00" .. a.label .. "|r")
+            else
+                btn:SetText("|cff666666" .. a.label .. "|r")
+            end
         end
-        return out
-    end,
-    function(val)
-        reActionIndex = val
-        reActionBtn:SetText(CH.ruleActions[val].label)
-        reActionDesc:SetText(CH.ruleActions[val].desc or "")
     end
-)
-reActionBtn:SetText(CH.ruleActions[1].label)
-reActionBtn:SetPoint("LEFT", reActionLabel, "RIGHT", 8, 0)
+end
+
+local actionBtnY = -68
+for ai = 1, table.getn(CH.ruleActions) do
+    local a = CH.ruleActions[ai]
+    local togBtn = MakeButton(ruleEditor, 150, 18, a.label)
+    togBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 70 + (math.mod(ai - 1, 2)) * 140, actionBtnY)
+    if ai == 3 then actionBtnY = actionBtnY - 22 end
+
+    local closureId = a.id
+    togBtn:SetScript("OnClick", function()
+        reSelectedActions[closureId] = not reSelectedActions[closureId]
+        UpdateActionToggleAppearance()
+    end)
+
+    reActionToggles[a.id] = togBtn
+    if math.mod(ai, 2) == 0 then
+        actionBtnY = actionBtnY - 22
+    end
+end
 
 -- ---- Condition Rows ----
 local NUM_CONDITIONS = 3
@@ -1274,7 +1299,7 @@ local function GetCondLabel(typeIdx)
     return "(none)"
 end
 
-local condStartY = -108
+local condStartY = -120
 local condRowH   = 44
 
 for ci = 1, NUM_CONDITIONS do
@@ -1410,8 +1435,18 @@ reSaveBtn:SetScript("OnClick", function()
         end
     end
 
-    local actionId = CH.ruleActions[reActionIndex] and CH.ruleActions[reActionIndex].id or "glow"
-    local newRule = { spell = spellName, action = actionId, conditions = conditions }
+    -- Collect selected actions
+    local actionsList = {}
+    for _, a in ipairs(CH.ruleActions) do
+        if reSelectedActions[a.id] then
+            table.insert(actionsList, a.id)
+        end
+    end
+    -- Default to glow if nothing selected
+    if table.getn(actionsList) == 0 then
+        table.insert(actionsList, "glow")
+    end
+    local newRule = { spell = spellName, actions = actionsList, conditions = conditions }
     if not CH.db.customRules then CH.db.customRules = {} end
 
     if reEditingRule then
@@ -1462,14 +1497,18 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         else
             reSpellBtn:SetText(editSpell ~= "" and editSpell or "(no spells)")
         end
-        -- Pre-populate action
-        local editAction = reEditingRule.rule.action or "glow"
-        reActionIndex = 1
-        for i, a in ipairs(CH.ruleActions) do
-            if a.id == editAction then reActionIndex = i; break end
+        -- Pre-populate actions (multi-select)
+        reSelectedActions = {}
+        if reEditingRule.rule.actions then
+            for _, a in ipairs(reEditingRule.rule.actions) do
+                reSelectedActions[a] = true
+            end
+        elseif reEditingRule.rule.action then
+            reSelectedActions[reEditingRule.rule.action] = true
+        else
+            reSelectedActions["glow"] = true
         end
-        reActionBtn:SetText(CH.ruleActions[reActionIndex].label)
-        reActionDesc:SetText(CH.ruleActions[reActionIndex].desc or "")
+        UpdateActionToggleAppearance()
         -- Pre-populate conditions
         local editConds = reEditingRule.rule.conditions or {}
         local numEditConds = table.getn(editConds)
@@ -1505,10 +1544,9 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         else
             reSpellBtn:SetText("(no spells)")
         end
-        -- Reset action
-        reActionIndex = 1
-        reActionBtn:SetText(CH.ruleActions[1].label)
-        reActionDesc:SetText(CH.ruleActions[1].desc or "")
+        -- Reset actions — default glow selected
+        reSelectedActions = { glow = true }
+        UpdateActionToggleAppearance()
         -- Reset conditions — start with 1 visible row
         reVisibleConds = 1
         for ci = 1, NUM_CONDITIONS do

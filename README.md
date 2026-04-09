@@ -80,7 +80,7 @@ A modular cooldown tracking HUD addon for **TurtleWoW** (WoW 1.12 / Interface 11
 
 ## Usage
 
-- `/cooldownhud` or `/chud` - Toggle the configuration panel
+- `/cooldownhud` or `/ch` - Toggle the configuration panel
 - Left-click the minimap button to open config
 - Right-click the minimap button to toggle test mode
 

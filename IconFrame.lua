@@ -14,7 +14,8 @@ local GLOW_BORDER_WIDTH = 3
 local DIM_ALPHA         = 0.4
 local GLOW_PULSE_SPEED  = 2  -- cycles per second
 
-local FALLBACK_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local FALLBACK_ICON    = "Interface\\Icons\\INV_Misc_QuestionMark"
+local DEFAULT_SEAL_ICON = "Interface\\Icons\\Spell_Holy_SealOfMight"
 
 -------------------------------------------------------------------------------
 -- Icon frame registry
@@ -37,7 +38,13 @@ function CH:CreateIconFrame(spellName, size)
     -- 1. Texture layer (ARTWORK) ------------------------------------------
     local tex = fr:CreateTexture(name .. "_Tex", "ARTWORK")
     tex:SetAllPoints(fr)
-    local iconPath = CH:GetSpellIcon(spellName) or FALLBACK_ICON
+    -- Special tracker spells start with "_"; use default icon, not spellbook
+    local iconPath
+    if string.sub(spellName, 1, 1) == "_" then
+        iconPath = DEFAULT_SEAL_ICON
+    else
+        iconPath = CH:GetSpellIcon(spellName) or FALLBACK_ICON
+    end
     tex:SetTexture(iconPath)
     fr.texture = tex
 
@@ -136,12 +143,103 @@ function CH:CreateIconFrame(spellName, size)
 end
 
 -------------------------------------------------------------------------------
+-- Seal tracker support
+-------------------------------------------------------------------------------
+
+local SEAL_TEXTURES = {
+    "RighteousnessAura",
+    "ThunderBolt",
+    "HealingAura",
+    "SealOfMight",
+    "SealOfWrath",
+    "InnerRage",
+    "SealOfCommand",
+}
+
+local hasBuffTimeAPI = (GetPlayerBuff ~= nil and GetPlayerBuffTimeLeft ~= nil)
+
+local function IsSealTexture(texPath)
+    if not texPath then return false end
+    for _, pattern in ipairs(SEAL_TEXTURES) do
+        if string.find(texPath, pattern) then
+            return true
+        end
+    end
+    return false
+end
+
+local function GetActiveSeal()
+    local i = 1
+    while true do
+        local tex = UnitBuff("player", i)
+        if not tex then break end
+        if IsSealTexture(tex) then
+            local timeLeft = nil
+            if hasBuffTimeAPI then
+                local buffIdx = GetPlayerBuff(i - 1, "HELPFUL")
+                if buffIdx and buffIdx >= 0 then
+                    timeLeft = GetPlayerBuffTimeLeft(buffIdx)
+                end
+            end
+            return tex, timeLeft
+        end
+        i = i + 1
+    end
+    return nil, nil
+end
+
+function CH:UpdateSealTracker(fr)
+    -- Hide outside combat / test mode
+    if not (CH.inCombat or CH.testMode) then
+        fr:SetAlpha(0)
+        fr:Hide()
+        return
+    end
+
+    fr:Show()
+    fr:SetAlpha(1)
+
+    local sealTex, timeLeft = GetActiveSeal()
+
+    if sealTex then
+        fr.texture:SetTexture(sealTex)
+        fr.cooldownOverlay:Hide()
+        fr.texture:SetAlpha(1)
+
+        if timeLeft and timeLeft > 0 then
+            local text, r, g, b = CH:FormatTime(timeLeft)
+            fr.timerText:SetText(text)
+            fr.timerText:SetTextColor(r, g, b)
+        else
+            fr.timerText:SetText("")
+        end
+    else
+        fr.texture:SetTexture(DEFAULT_SEAL_ICON)
+        fr.cooldownOverlay:Hide()
+        fr.texture:SetAlpha(DIM_ALPHA)
+        fr.timerText:SetText("")
+    end
+
+    -- No glow for seal tracker
+    fr.glowActive = false
+    for i = 1, 4 do
+        fr.glowEdges[i]:Hide()
+    end
+end
+
+-------------------------------------------------------------------------------
 -- CH:UpdateIconState(spellName)
 -------------------------------------------------------------------------------
 
 function CH:UpdateIconState(spellName)
     local fr = CH.iconFrames[spellName]
     if not fr then return end
+
+    -- Special tracker spells (start with "_Seal")
+    if string.sub(spellName, 1, 5) == "_Seal" then
+        CH:UpdateSealTracker(fr)
+        return
+    end
 
     -- Check spell is known
     local idx = CH:FindSpell(spellName)
@@ -152,9 +250,14 @@ function CH:UpdateIconState(spellName)
         return
     end
 
-    -- Refresh texture from live spellbook data
-    local texPath = GetSpellTexture(idx, BOOKTYPE_SPELL) or FALLBACK_ICON
-    fr.texture:SetTexture(texPath)
+    -- Refresh texture from live spellbook data; if GetSpellTexture returns nil,
+    -- use the fallback icon but still show the icon normally
+    local texPath = GetSpellTexture(idx, BOOKTYPE_SPELL)
+    if texPath then
+        fr.texture:SetTexture(texPath)
+    else
+        fr.texture:SetTexture(FALLBACK_ICON)
+    end
 
     -- Hide outside combat / test mode
     if not (CH.inCombat or CH.testMode) then

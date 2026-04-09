@@ -111,11 +111,14 @@ function CH:ApplyLayout()
         local rowH    = RowIconSize(baseSize, row.scale)
         local rowCY   = startY - math.floor(rowH / 2)   -- center-y for this row
 
-        -- Filter to spells that have frames AND are known to the player
+        -- Filter to spells that have frames AND are known to the player.
+        -- Special tracker spells (starting with "_") are always visible.
         local visible = {}
         for _, spellName in ipairs(row.spells) do
-            if CH.iconFrames[spellName] and CH:FindSpell(spellName) then
-                table.insert(visible, spellName)
+            if CH.iconFrames[spellName] then
+                if string.sub(spellName, 1, 1) == "_" or CH:FindSpell(spellName) then
+                    table.insert(visible, spellName)
+                end
             end
         end
 
@@ -138,8 +141,11 @@ function CH:ApplyLayout()
         end
 
         -- Hide frames for spells not visible (unknown to player)
+        -- Special tracker spells (starting with "_") are never hidden here
         for _, spellName in ipairs(row.spells) do
-            if CH.iconFrames[spellName] and not CH:FindSpell(spellName) then
+            if CH.iconFrames[spellName]
+               and string.sub(spellName, 1, 1) ~= "_"
+               and not CH:FindSpell(spellName) then
                 local fr = CH.iconFrames[spellName]
                 fr:Hide()
             end
@@ -227,10 +233,13 @@ function CH:UpdateDragHandle()
         local rowH     = RowIconSize(baseSize, row.scale)
 
         -- Count visible spells for width calculation
+        -- Special tracker spells (starting with "_") are always counted
         local numVisible = 0
         for _, spellName in ipairs(row.spells) do
-            if CH.iconFrames[spellName] and CH:FindSpell(spellName) then
-                numVisible = numVisible + 1
+            if CH.iconFrames[spellName] then
+                if string.sub(spellName, 1, 1) == "_" or CH:FindSpell(spellName) then
+                    numVisible = numVisible + 1
+                end
             end
         end
 
@@ -297,7 +306,8 @@ function CH:ShowAllIcons()
     for i = 1, table.getn(CH.activeSpells) do
         local spellName = CH.activeSpells[i]
         local fr = CH.iconFrames[spellName]
-        if fr and CH:FindSpell(spellName) then
+        -- Special tracker spells are always shown; others need to be known
+        if fr and (string.sub(spellName, 1, 1) == "_" or CH:FindSpell(spellName)) then
             fr:Show()
             fr:SetAlpha(1)
         end

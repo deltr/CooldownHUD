@@ -218,7 +218,7 @@ do
         CH:RefreshGeneralTab()
     end)
 
-    y = y - 36
+    y = y - 44
 
     -- Sliders
     local sliderDefs = {
@@ -844,9 +844,21 @@ local sbClose = CreateFrame("Button", nil, spellBrowser, "UIPanelCloseButton")
 sbClose:SetPoint("TOPRIGHT", spellBrowser, "TOPRIGHT", -4, -4)
 sbClose:SetScript("OnClick", function() spellBrowser:Hide() end)
 
+-- Search box (OnTextChanged wired after RefreshSpellBrowser is defined below)
+local sbSearchBox = CreateFrame("EditBox", "CooldownHUD_SBSearch", spellBrowser, "InputBoxTemplate")
+sbSearchBox:SetWidth(220)
+sbSearchBox:SetHeight(20)
+sbSearchBox:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -36)
+sbSearchBox:SetAutoFocus(false)
+sbSearchBox:SetMaxLetters(64)
+sbSearchBox:SetScript("OnEscapePressed", function()
+    sbSearchBox:SetText("")
+    sbSearchBox:ClearFocus()
+end)
+
 -- Target row selector
 local sbRowLabel = spellBrowser:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-sbRowLabel:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -40)
+sbRowLabel:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -62)
 sbRowLabel:SetText("Add to:")
 
 local sbTargetRow   = 1
@@ -860,7 +872,7 @@ end)
 
 -- Scroll frame for spell list
 local sbScroll = CreateFrame("ScrollFrame", "CooldownHUD_SBScroll", spellBrowser)
-sbScroll:SetPoint("TOPLEFT",  spellBrowser, "TOPLEFT",  10, -70)
+sbScroll:SetPoint("TOPLEFT",  spellBrowser, "TOPLEFT",  10, -88)
 sbScroll:SetPoint("BOTTOMRIGHT", spellBrowser, "BOTTOMRIGHT", -10, 10)
 
 local sbContent = CreateFrame("Frame", "CooldownHUD_SBContent", sbScroll)
@@ -887,11 +899,20 @@ local function RefreshSpellBrowser()
         end
     end
 
+    -- Get search filter text (sbSearchBox declared earlier in this scope)
+    local searchText = ""
+    if sbSearchBox then
+        searchText = string.lower(sbSearchBox:GetText() or "")
+    end
+
     local allSpells = CH:GetAllSpellNames()
     local y = 0
 
     for _, spellName in ipairs(allSpells) do
-        if not tracked[spellName] then
+        -- Apply search filter
+        if searchText ~= "" and not string.find(string.lower(spellName), searchText, 1, true) then
+            -- skip: doesn't match search
+        elseif not tracked[spellName] then
             local entryH  = 24
             local entryFr = CreateFrame("Frame", nil, sbContent)
             entryFr:SetWidth(250)
@@ -952,10 +973,16 @@ local function RefreshSpellBrowser()
     sbContent:SetHeight(y)
 end
 
+-- Wire search box OnTextChanged now that RefreshSpellBrowser is defined
+sbSearchBox:SetScript("OnTextChanged", function()
+    RefreshSpellBrowser()
+end)
+
 -- Event: OPEN_SPELL_BROWSER
 CH:RegisterEvent("OPEN_SPELL_BROWSER", function()
     sbTargetRow = 1
     sbRowBtn:SetText("Row 1")
+    sbSearchBox:SetText("")
     RefreshSpellBrowser()
     spellBrowser:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     spellBrowser:Show()

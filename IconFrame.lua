@@ -206,6 +206,7 @@ function CH:UpdateSealTracker(fr)
         fr.texture:SetTexture(sealTex)
         fr.cooldownOverlay:Hide()
         fr.texture:SetAlpha(1)
+        fr.sealPulsing = false
 
         if timeLeft and timeLeft > 0 then
             local text, r, g, b = CH:FormatTime(timeLeft)
@@ -215,24 +216,22 @@ function CH:UpdateSealTracker(fr)
             fr.timerText:SetText("")
         end
     else
-        -- No seal active: show default icon with flashing glow to prompt casting
+        -- No seal active: pulse the icon opacity to prompt casting a seal
         fr.texture:SetTexture(DEFAULT_SEAL_ICON)
         fr.cooldownOverlay:Hide()
-        fr.texture:SetAlpha(1)
         fr.timerText:SetText("")
 
-        -- Flash the glow border to prompt the player to cast a seal
-        if not fr.glowActive then
-            fr.glowActive = true
-            fr.glowElapsed = 0
-            for i = 1, 4 do
-                fr.glowEdges[i]:Show()
-            end
+        -- Pulse icon alpha between 0.5 and 1.0
+        if not fr.sealPulsing then
+            fr.sealPulsing = true
+            fr.sealPulseElapsed = 0
         end
-        return  -- skip glow deactivation below
+        fr.sealPulseElapsed = (fr.sealPulseElapsed or 0) + 0.05
+        local alpha = 0.75 + 0.25 * math.sin(fr.sealPulseElapsed * 2 * math.pi * 1.5)
+        fr.texture:SetAlpha(alpha)
     end
 
-    -- Deactivate glow when seal is active
+    -- Deactivate glow (not used for seal tracker)
     if fr.glowActive then
         fr.glowActive = false
         for i = 1, 4 do

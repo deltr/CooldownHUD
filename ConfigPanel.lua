@@ -416,17 +416,6 @@ addSpellBtn:SetScript("OnClick", function()
     CH:FireEvent("OPEN_SPELL_BROWSER")
 end)
 
--- "+ Add Row" button
-local addRowBtn = MakeButton(spellsPanel, 90, 22, "+ Add Row")
-addRowBtn:SetPoint("LEFT", addSpellBtn, "RIGHT", 6, 0)
-addRowBtn:SetScript("OnClick", function()
-    local newIdx = table.getn(CH.rowData) + 1
-    CH.rowData[newIdx] = { scale = 55, spells = {} }
-    CH:SaveRowOverrides()
-    CH:ApplyLayout()
-    CH:RefreshSpellsTab()
-end)
-
 -- Rows pool for spell list entries (we recycle/recreate each refresh)
 local spellRows = {}
 
@@ -871,38 +860,19 @@ sbSearchBox:SetScript("OnEscapePressed", function()
     sbSearchBox:ClearFocus()
 end)
 
--- Target row selector — one button per row, selected one is highlighted
+-- Target row selector
 local sbRowLabel = spellBrowser:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 sbRowLabel:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -62)
 sbRowLabel:SetText("Add to:")
 
 local sbTargetRow = 1
-local sbRowButtons = {}
-
-local function UpdateSBRowButtons()
-    -- Remove old buttons
-    for _, btn in ipairs(sbRowButtons) do btn:Hide() end
-    sbRowButtons = {}
-    local numRows = table.getn(CH.rowData)
-    if numRows == 0 then return end
-    if sbTargetRow > numRows then sbTargetRow = 1 end
-    for ri = 1, numRows do
-        local btn = MakeButton(spellBrowser, 46, 20, "Row " .. ri)
-        btn:SetPoint("TOPLEFT", sbRowLabel, "TOPRIGHT", 6 + (ri - 1) * 50, 2)
-        local closureRI = ri
-        btn:SetScript("OnClick", function()
-            sbTargetRow = closureRI
-            UpdateSBRowButtons()
-        end)
-        -- Highlight selected row
-        if ri == sbTargetRow then
-            btn:SetTextColor(1, 0.82, 0)
-        else
-            btn:SetTextColor(0.6, 0.6, 0.6)
-        end
-        table.insert(sbRowButtons, btn)
-    end
-end
+local sbRowBtn = MakeButton(spellBrowser, 60, 20, "Row 1")
+sbRowBtn:SetPoint("LEFT", sbRowLabel, "RIGHT", 6, 0)
+sbRowBtn:SetScript("OnClick", function()
+    local numRows = math.max(1, table.getn(CH.rowData))
+    sbTargetRow = math.mod(sbTargetRow, numRows) + 1
+    sbRowBtn:SetText("Row " .. sbTargetRow)
+end)
 
 -- Scroll frame for spell list
 local sbScroll = CreateFrame("ScrollFrame", "CooldownHUD_SBScroll", spellBrowser)
@@ -924,7 +894,6 @@ end
 
 local function RefreshSpellBrowser()
     ClearSBRows()
-    UpdateSBRowButtons()
 
     -- Build set of already-tracked spells
     local tracked = {}

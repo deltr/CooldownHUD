@@ -441,6 +441,19 @@ function CH:RefreshSpellsTab()
         local row    = rowData[rowIdx]
         local spells = row.spells or {}
 
+        -- Separator line above row header (skip first row)
+        if rowIdx > 1 then
+            local sep = CreateFrame("Frame", nil, spellContent)
+            sep:SetWidth(contentW - 20)
+            sep:SetHeight(1)
+            sep:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 10, -y)
+            local sepTex = sep:CreateTexture(nil, "BACKGROUND")
+            sepTex:SetAllPoints(sep)
+            sepTex:SetTexture(0.4, 0.4, 0.4, 0.5)
+            table.insert(spellRows, sep)
+            y = y + 6
+        end
+
         -- Row header label
         local headerH  = 20
         local headerFr = CreateFrame("Frame", nil, spellContent)
@@ -448,10 +461,9 @@ function CH:RefreshSpellsTab()
         headerFr:SetHeight(headerH)
         headerFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 0, -y)
 
-        local hLabel = headerFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local hLabel = headerFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         hLabel:SetPoint("LEFT", headerFr, "LEFT", 4, 0)
-        hLabel:SetText("-- Row " .. rowIdx .. " (scale: " .. (row.scale or 100) .. "%) --")
-        hLabel:SetTextColor(0.8, 0.8, 0.2, 1)
+        hLabel:SetText("|cffffff00Row " .. rowIdx .. "|r  |cff888888Scale: " .. (row.scale or 100) .. "%|r")
 
         table.insert(spellRows, headerFr)
         y = y + headerH + 2
@@ -701,9 +713,9 @@ function CH:RefreshRulesTab()
     explainLbl:SetWidth(contentW - 20)
     explainLbl:SetJustifyH("LEFT")
     explainLbl:SetText(
-        "|cffffffffGlow Rules|r add a |cffffff00gold pulsing border|r to a spell icon "
-        .. "when ALL conditions are true. Use them to highlight the best "
-        .. "moment to cast a spell (e.g. synergy procs, execute range)."
+        "Rules control how spell icons react when conditions are met. "
+        .. "Actions include: gold border glow, icon opacity pulsing, showing/hiding icons conditionally. "
+        .. "Create rules to highlight synergies, execute phases, or important cooldowns."
     )
     table.insert(ruleRows, explainFr)
     y = y + 52
@@ -736,7 +748,7 @@ function CH:RefreshRulesTab()
 
         local disabled = CH.db.disabledPresetRules or {}
 
-        for _, rule in ipairs(presetRules) do
+        for pi, rule in ipairs(presetRules) do
             local firstCondType = ""
             if rule.conditions and rule.conditions[1] then
                 firstCondType = rule.conditions[1][1] or ""
@@ -768,6 +780,22 @@ function CH:RefreshRulesTab()
                 CH:InvalidateRulesCache()
             end)
 
+            -- Edit button (top right)
+            local editBtn = MakeButton(entryFr, 36, 18, "Edit")
+            editBtn:SetPoint("TOPRIGHT", entryFr, "TOPRIGHT", -4, -2)
+            local closurePI  = pi
+            local closureRule = rule
+            local closurePresetKey = key
+            editBtn:SetScript("OnClick", function()
+                reEditingRule = {
+                    source = "preset",
+                    index  = closurePI,
+                    key    = closurePresetKey,
+                    rule   = closureRule,
+                }
+                CH:FireEvent("OPEN_RULE_EDITOR")
+            end)
+
             -- Spell name (top line)
             local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             nameLbl:SetPoint("LEFT", togBtn, "RIGHT", 6, 0)
@@ -781,7 +809,7 @@ function CH:RefreshRulesTab()
             -- Condition description (second line)
             local condLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             condLbl:SetPoint("TOPLEFT", togBtn, "BOTTOMLEFT", 56, -2)
-            condLbl:SetWidth(contentW - 70)
+            condLbl:SetWidth(contentW - 110)
             condLbl:SetJustifyH("LEFT")
             condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
@@ -819,10 +847,23 @@ function CH:RefreshRulesTab()
             local delBtn = MakeButton(entryFr, 22, 18, "X")
             delBtn:SetPoint("TOPRIGHT", entryFr, "TOPRIGHT", -4, -2)
             local closureIdx = ci
+            local closureRule = rule
             delBtn:SetScript("OnClick", function()
                 table.remove(CH.db.customRules, closureIdx)
                 CH:InvalidateRulesCache()
                 CH:RefreshRulesTab()
+            end)
+
+            -- Edit button (left of delete)
+            local editBtn = MakeButton(entryFr, 36, 18, "Edit")
+            editBtn:SetPoint("RIGHT", delBtn, "LEFT", -4, 0)
+            editBtn:SetScript("OnClick", function()
+                reEditingRule = {
+                    source = "custom",
+                    index  = closureIdx,
+                    rule   = closureRule,
+                }
+                CH:FireEvent("OPEN_RULE_EDITOR")
             end)
 
             -- Spell name (top line)
@@ -834,7 +875,7 @@ function CH:RefreshRulesTab()
             -- Condition description (second line)
             local condLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             condLbl:SetPoint("TOPLEFT", nameLbl, "BOTTOMLEFT", 0, -2)
-            condLbl:SetWidth(contentW - 40)
+            condLbl:SetWidth(contentW - 80)
             condLbl:SetJustifyH("LEFT")
             condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
@@ -876,11 +917,16 @@ local sbClose = CreateFrame("Button", nil, spellBrowser, "UIPanelCloseButton")
 sbClose:SetPoint("TOPRIGHT", spellBrowser, "TOPRIGHT", -4, -4)
 sbClose:SetScript("OnClick", function() spellBrowser:Hide() end)
 
+-- "Search:" label
+local sbSearchLabel = spellBrowser:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+sbSearchLabel:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -38)
+sbSearchLabel:SetText("Search:")
+
 -- Search box (OnTextChanged wired after RefreshSpellBrowser is defined below)
 local sbSearchBox = CreateFrame("EditBox", "CooldownHUD_SBSearch", spellBrowser, "InputBoxTemplate")
-sbSearchBox:SetWidth(220)
+sbSearchBox:SetWidth(190)
 sbSearchBox:SetHeight(20)
-sbSearchBox:SetPoint("TOPLEFT", spellBrowser, "TOPLEFT", 14, -36)
+sbSearchBox:SetPoint("LEFT", sbSearchLabel, "RIGHT", 6, 0)
 sbSearchBox:SetAutoFocus(false)
 sbSearchBox:SetMaxLetters(64)
 sbSearchBox:SetScript("OnEscapePressed", function()
@@ -896,10 +942,37 @@ sbRowLabel:SetText("Add to:")
 local sbTargetRow = 1
 local sbRowBtn = MakeButton(spellBrowser, 60, 20, "Row 1")
 sbRowBtn:SetPoint("LEFT", sbRowLabel, "RIGHT", 6, 0)
+
+-- Dropdown popup frame
+local sbRowDropdown = CreateFrame("Frame", nil, spellBrowser)
+sbRowDropdown:SetWidth(60)
+sbRowDropdown:SetFrameStrata("TOOLTIP")
+sbRowDropdown:SetBackdrop(MakeBackdrop())
+sbRowDropdown:SetPoint("TOP", sbRowBtn, "BOTTOM", 0, -2)
+sbRowDropdown:Hide()
+
 sbRowBtn:SetScript("OnClick", function()
-    local numRows = math.max(1, table.getn(CH.rowData))
-    sbTargetRow = math.mod(sbTargetRow, numRows) + 1
-    sbRowBtn:SetText("Row " .. sbTargetRow)
+    if sbRowDropdown:IsVisible() then
+        sbRowDropdown:Hide()
+    else
+        -- Hide any existing child buttons
+        local children = { sbRowDropdown:GetChildren() }
+        for _, c in ipairs(children) do c:Hide() end
+        local numRows = table.getn(CH.rowData)
+        if numRows < 1 then numRows = 1 end
+        sbRowDropdown:SetHeight(numRows * 22 + 10)
+        for ri = 1, numRows do
+            local rowOpt = MakeButton(sbRowDropdown, 50, 20, "Row " .. ri)
+            rowOpt:SetPoint("TOP", sbRowDropdown, "TOP", 0, -5 - (ri - 1) * 22)
+            local closureRI = ri
+            rowOpt:SetScript("OnClick", function()
+                sbTargetRow = closureRI
+                sbRowBtn:SetText("Row " .. closureRI)
+                sbRowDropdown:Hide()
+            end)
+        end
+        sbRowDropdown:Show()
+    end
 end)
 
 -- Scroll frame for spell list
@@ -1023,6 +1096,10 @@ end)
 -------------------------------------------------------------------------------
 -- ===== RULE EDITOR POPUP =====
 -------------------------------------------------------------------------------
+
+-- Tracks which rule is being edited (nil = new rule)
+-- { source = "preset"/"custom", index = N, rule = {...} }
+local reEditingRule = nil
 
 local ruleEditor = CreateFrame("Frame", "CooldownHUD_RuleEditor", UIParent)
 ruleEditor:SetWidth(340)
@@ -1174,7 +1251,21 @@ reSaveBtn:SetScript("OnClick", function()
     local actionId = CH.ruleActions[reActionIndex] and CH.ruleActions[reActionIndex].id or "glow"
     local newRule = { spell = spellName, action = actionId, conditions = conditions }
     if not CH.db.customRules then CH.db.customRules = {} end
-    table.insert(CH.db.customRules, newRule)
+
+    if reEditingRule then
+        if reEditingRule.source == "custom" then
+            -- Edit custom rule in place
+            CH.db.customRules[reEditingRule.index] = newRule
+        elseif reEditingRule.source == "preset" then
+            -- Create a custom override; disable the original preset
+            table.insert(CH.db.customRules, newRule)
+            if not CH.db.disabledPresetRules then CH.db.disabledPresetRules = {} end
+            CH.db.disabledPresetRules[reEditingRule.key] = true
+        end
+        reEditingRule = nil
+    else
+        table.insert(CH.db.customRules, newRule)
+    end
     CH:InvalidateRulesCache()
 
     ruleEditor:Hide()
@@ -1185,6 +1276,7 @@ end)
 local reCancelBtn = MakeButton(ruleEditor, 80, 22, "Cancel")
 reCancelBtn:SetPoint("RIGHT", reSaveBtn, "LEFT", -8, 0)
 reCancelBtn:SetScript("OnClick", function()
+    reEditingRule = nil
     ruleEditor:Hide()
 end)
 
@@ -1193,21 +1285,75 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
     -- Refresh spell list
     reSpellNames = CH.activeSpells or {}
     reSpellIndex = 1
-    if table.getn(reSpellNames) > 0 then
-        reSpellBtn:SetText(reSpellNames[1])
+
+    if reEditingRule then
+        reTitle:SetText("Edit Rule")
+        -- Pre-populate spell
+        local editSpell = reEditingRule.rule.spell or ""
+        local foundIdx = 1
+        for i, sn in ipairs(reSpellNames) do
+            if sn == editSpell then foundIdx = i; break end
+        end
+        reSpellIndex = foundIdx
+        if table.getn(reSpellNames) > 0 then
+            reSpellBtn:SetText(reSpellNames[reSpellIndex] or editSpell)
+        else
+            reSpellBtn:SetText(editSpell ~= "" and editSpell or "(no spells)")
+        end
+        -- Pre-populate action
+        local editAction = reEditingRule.rule.action or "glow"
+        reActionIndex = 1
+        for i, a in ipairs(CH.ruleActions) do
+            if a.id == editAction then reActionIndex = i; break end
+        end
+        reActionBtn:SetText(CH.ruleActions[reActionIndex].label)
+        reActionDesc:SetText(CH.ruleActions[reActionIndex].desc or "")
+        -- Pre-populate conditions
+        local editConds = reEditingRule.rule.conditions or {}
+        for ci = 1, NUM_CONDITIONS do
+            local cond = editConds[ci]
+            if cond then
+                local condTypeId = cond[1]
+                local condParam  = cond[2]
+                local typeIdx = 1
+                for ti, ct in ipairs(CH.conditionTypes) do
+                    if ct.id == condTypeId then typeIdx = ti; break end
+                end
+                reCondTypes[ci] = typeIdx
+                reCondBtns[ci]:SetText(GetCondLabel(typeIdx))
+                local ct = CH.conditionTypes[typeIdx]
+                if ct and ct.hasParam then
+                    reCondBoxes[ci]:SetText(condParam ~= nil and tostring(condParam) or "")
+                    reCondBoxes[ci]:Show()
+                else
+                    reCondBoxes[ci]:SetText("")
+                    reCondBoxes[ci]:Hide()
+                end
+            else
+                reCondTypes[ci] = 1
+                reCondBtns[ci]:SetText(GetCondLabel(1))
+                reCondBoxes[ci]:SetText("")
+                reCondBoxes[ci]:Hide()
+            end
+        end
     else
-        reSpellBtn:SetText("(no spells)")
-    end
-    -- Reset action
-    reActionIndex = 1
-    reActionBtn:SetText(CH.ruleActions[1].label)
-    reActionDesc:SetText(CH.ruleActions[1].desc or "")
-    -- Reset conditions
-    for ci = 1, NUM_CONDITIONS do
-        reCondTypes[ci] = 1
-        reCondBtns[ci]:SetText(GetCondLabel(1))
-        reCondBoxes[ci]:SetText("")
-        reCondBoxes[ci]:Hide()
+        reTitle:SetText("New Rule")
+        if table.getn(reSpellNames) > 0 then
+            reSpellBtn:SetText(reSpellNames[1])
+        else
+            reSpellBtn:SetText("(no spells)")
+        end
+        -- Reset action
+        reActionIndex = 1
+        reActionBtn:SetText(CH.ruleActions[1].label)
+        reActionDesc:SetText(CH.ruleActions[1].desc or "")
+        -- Reset conditions
+        for ci = 1, NUM_CONDITIONS do
+            reCondTypes[ci] = 1
+            reCondBtns[ci]:SetText(GetCondLabel(1))
+            reCondBoxes[ci]:SetText("")
+            reCondBoxes[ci]:Hide()
+        end
     end
     ruleEditor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     ruleEditor:Show()

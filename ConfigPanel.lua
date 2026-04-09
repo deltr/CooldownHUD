@@ -237,6 +237,7 @@ do
         local key = def.key
         s:SetScript("OnValueChanged", function()
             local v = math.floor(this:GetValue() + 0.5)
+            if not CH.db then return end
             CH.db[key] = v
             local lbl = getglobal("CooldownHUD_GenSlider_" .. key .. "Text")
             if lbl then lbl:SetText(def.label .. ": " .. v) end
@@ -263,6 +264,7 @@ do
         local row = def.row
         s:SetScript("OnValueChanged", function()
             local v = math.floor(this:GetValue() + 0.5)
+            if not CH.db then return end
             if not CH.db.rows then CH.db.rows = {} end
             if not CH.db.rows[row] then CH.db.rows[row] = {} end
             CH.db.rows[row].scale = v

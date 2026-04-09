@@ -706,6 +706,10 @@ end
 -- ===== RULES TAB =====
 -------------------------------------------------------------------------------
 
+-- Tracks which rule is being edited (nil = new rule)
+-- { source = "preset"/"custom", index = N, key = "...", rule = {...} }
+local reEditingRule = nil
+
 local rulesPanel = tabPanels[3]
 
 -- ScrollFrame for rules list
@@ -1174,9 +1178,7 @@ end)
 -- ===== RULE EDITOR POPUP =====
 -------------------------------------------------------------------------------
 
--- Tracks which rule is being edited (nil = new rule)
--- { source = "preset"/"custom", index = N, rule = {...} }
-local reEditingRule = nil
+-- (reEditingRule declared earlier in file)
 
 local ruleEditor = CreateFrame("Frame", "CooldownHUD_RuleEditor", UIParent)
 ruleEditor:SetWidth(340)
@@ -1336,22 +1338,25 @@ reSaveBtn:SetScript("OnClick", function()
 
     local conditions = {}
     for ci = 1, NUM_CONDITIONS do
-        local ct = CH.conditionTypes[reCondTypes[ci]]
-        if ct then
-            local param = nil
-            if ct.hasParam then
-                local rawVal = reCondBoxes[ci]:GetText()
-                if rawVal and rawVal ~= "" then
-                    -- Try to tonumber for percent types
-                    local n = tonumber(rawVal)
-                    if n then
-                        param = n
-                    else
-                        param = rawVal
+        local typeIdx = reCondTypes[ci]
+        -- Skip empty/none conditions (index 0 or nil)
+        if typeIdx and typeIdx > 0 then
+            local ct = CH.conditionTypes[typeIdx]
+            if ct then
+                local param = nil
+                if ct.hasParam then
+                    local rawVal = reCondBoxes[ci]:GetText()
+                    if rawVal and rawVal ~= "" then
+                        local n = tonumber(rawVal)
+                        if n then
+                            param = n
+                        else
+                            param = rawVal
+                        end
                     end
                 end
+                table.insert(conditions, { ct.id, param })
             end
-            table.insert(conditions, { ct.id, param })
         end
     end
 
@@ -1437,8 +1442,8 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
                     reCondBoxes[ci]:Hide()
                 end
             else
-                reCondTypes[ci] = 1
-                reCondBtns[ci]:SetText(GetCondLabel(1))
+                reCondTypes[ci] = 0
+                reCondBtns[ci]:SetText("(none)")
                 reCondBoxes[ci]:SetText("")
                 reCondBoxes[ci]:Hide()
             end
@@ -1454,10 +1459,10 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         reActionIndex = 1
         reActionBtn:SetText(CH.ruleActions[1].label)
         reActionDesc:SetText(CH.ruleActions[1].desc or "")
-        -- Reset conditions
+        -- Reset conditions — default to (none) for empty slots
         for ci = 1, NUM_CONDITIONS do
-            reCondTypes[ci] = 1
-            reCondBtns[ci]:SetText(GetCondLabel(1))
+            reCondTypes[ci] = 0
+            reCondBtns[ci]:SetText("(none)")
             reCondBoxes[ci]:SetText("")
             reCondBoxes[ci]:Hide()
         end

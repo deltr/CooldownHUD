@@ -66,6 +66,7 @@ local Evaluators = {
     end,
 
     targetHpBelow = function(spellName, param)
+        if not param then return false end
         local max = UnitHealthMax("target")
         if not max or max == 0 then return false end
         local pct = UnitHealth("target") / max * 100
@@ -73,6 +74,7 @@ local Evaluators = {
     end,
 
     playerHpBelow = function(spellName, param)
+        if not param then return false end
         local max = UnitHealthMax("player")
         if not max or max == 0 then return false end
         local pct = UnitHealth("player") / max * 100
@@ -80,6 +82,7 @@ local Evaluators = {
     end,
 
     playerManaBelow = function(spellName, param)
+        if not param then return false end
         local max = UnitManaMax("player")
         if not max or max == 0 then return false end
         local pct = UnitMana("player") / max * 100

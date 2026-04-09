@@ -15,7 +15,8 @@ local DIM_ALPHA         = 0.4
 local GLOW_PULSE_SPEED  = 2  -- cycles per second
 
 local FALLBACK_ICON    = "Interface\\Icons\\INV_Misc_QuestionMark"
-local DEFAULT_SEAL_ICON = "Interface\\Icons\\Spell_Holy_SealOfMight"
+local DEFAULT_SEAL_ICON = "Interface\\Icons\\Spell_Holy_RighteousnessAura"
+local SEAL_FLASH_SPEED = 3  -- flashes per second when no seal active
 
 -------------------------------------------------------------------------------
 -- Icon frame registry
@@ -214,16 +215,29 @@ function CH:UpdateSealTracker(fr)
             fr.timerText:SetText("")
         end
     else
+        -- No seal active: show default icon with flashing glow to prompt casting
         fr.texture:SetTexture(DEFAULT_SEAL_ICON)
         fr.cooldownOverlay:Hide()
-        fr.texture:SetAlpha(DIM_ALPHA)
+        fr.texture:SetAlpha(1)
         fr.timerText:SetText("")
+
+        -- Flash the glow border to prompt the player to cast a seal
+        if not fr.glowActive then
+            fr.glowActive = true
+            fr.glowElapsed = 0
+            for i = 1, 4 do
+                fr.glowEdges[i]:Show()
+            end
+        end
+        return  -- skip glow deactivation below
     end
 
-    -- No glow for seal tracker
-    fr.glowActive = false
-    for i = 1, 4 do
-        fr.glowEdges[i]:Hide()
+    -- Deactivate glow when seal is active
+    if fr.glowActive then
+        fr.glowActive = false
+        for i = 1, 4 do
+            fr.glowEdges[i]:Hide()
+        end
     end
 end
 

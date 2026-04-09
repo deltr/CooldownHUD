@@ -97,6 +97,8 @@ Includes presets for all 9 classes with spec-specific spell layouts and alert ru
 
 Spells the player doesn't have (unlearned talents, wrong race) are automatically hidden.
 
+> **Note:** Only the Paladin presets have been fully tested in-game. Other class presets are based on research and may contain spells with incorrect cooldowns, missing TurtleWoW-specific changes, or suboptimal rule conditions. If you find issues, you can edit any preset rule or spell layout directly in the addon's config panel. Bug reports and corrections are welcome via [GitHub Issues](https://github.com/deltr/CooldownHUD/issues).
+
 ## Requirements
 
 - TurtleWoW (WoW 1.12 client, Interface 11200)

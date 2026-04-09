@@ -1461,7 +1461,8 @@ local function UpdateReSpellIcon()
     reSpellIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 end
 
-local reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
+local reSpellBtn  -- forward declaration
+reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
     function()
         local out = {}
         for i = 1, table.getn(reSpellNames) do

@@ -166,8 +166,20 @@ function CH:GetActiveRules()
 end
 
 -------------------------------------------------------------------------------
--- CH:ShouldGlow(spellName)
--- Returns true if any active rule for this spell evaluates to true.
+-- Rule actions — what happens when a rule fires
+-------------------------------------------------------------------------------
+
+CH.ruleActions = {
+    { id = "glow",      label = "Gold border glow",     desc = "Pulsing gold border around the icon" },
+    { id = "pulse",     label = "Pulse icon opacity",    desc = "Icon fades in and out to draw attention" },
+    { id = "showOnly",  label = "Show icon only if true", desc = "Icon is hidden unless conditions are met" },
+    { id = "hideWhen",  label = "Hide icon when true",   desc = "Icon is hidden when conditions are met" },
+}
+
+-------------------------------------------------------------------------------
+-- CH:GetSpellActions(spellName)
+-- Returns a table of { action, ... } for all matching rules that evaluate true.
+-- Each entry is the action string from the rule (default "glow").
 -------------------------------------------------------------------------------
 
 -- Cached rules array, rebuilt on spec/rule changes instead of every frame
@@ -177,17 +189,39 @@ function CH:InvalidateRulesCache()
     cachedRules = nil
 end
 
-function CH:ShouldGlow(spellName)
+function CH:GetSpellActions(spellName)
+    if not cachedRules then
+        cachedRules = CH:GetActiveRules()
+    end
+    local actions = {}
+    for i = 1, table.getn(cachedRules) do
+        local rule = cachedRules[i]
+        if rule.spell == spellName and CH:EvaluateRule(rule) then
+            local action = rule.action or "glow"
+            actions[action] = true
+        end
+    end
+    return actions
+end
+
+-- Check if any rule for this spell has a specific action (regardless of conditions)
+function CH:HasRuleWithAction(spellName, actionId)
     if not cachedRules then
         cachedRules = CH:GetActiveRules()
     end
     for i = 1, table.getn(cachedRules) do
         local rule = cachedRules[i]
-        if rule.spell == spellName and CH:EvaluateRule(rule) then
+        if rule.spell == spellName and (rule.action or "glow") == actionId then
             return true
         end
     end
     return false
+end
+
+-- Backwards compat wrapper
+function CH:ShouldGlow(spellName)
+    local actions = self:GetSpellActions(spellName)
+    return actions["glow"] == true
 end
 
 -- Invalidate cache when spec or rules change

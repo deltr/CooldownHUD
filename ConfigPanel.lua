@@ -646,6 +646,15 @@ local function ClearRuleRows()
     ruleRows = {}
 end
 
+-- Get human-readable action label
+local function ActionLabel(actionId)
+    local id = actionId or "glow"
+    for _, a in ipairs(CH.ruleActions) do
+        if a.id == id then return a.label end
+    end
+    return id
+end
+
 -- Build a one-line condition summary
 local function ConditionSummary(conditions)
     if not conditions or table.getn(conditions) == 0 then
@@ -774,7 +783,7 @@ function CH:RefreshRulesTab()
             condLbl:SetPoint("TOPLEFT", togBtn, "BOTTOMLEFT", 56, -2)
             condLbl:SetWidth(contentW - 70)
             condLbl:SetJustifyH("LEFT")
-            condLbl:SetText("|cffffff00Gold glow|r when: " .. ConditionSummary(rule.conditions))
+            condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
             table.insert(ruleRows, entryFr)
@@ -827,7 +836,7 @@ function CH:RefreshRulesTab()
             condLbl:SetPoint("TOPLEFT", nameLbl, "BOTTOMLEFT", 0, -2)
             condLbl:SetWidth(contentW - 40)
             condLbl:SetJustifyH("LEFT")
-            condLbl:SetText("|cffffff00Gold glow|r when: " .. ConditionSummary(rule.conditions))
+            condLbl:SetText("|cffffff00" .. ActionLabel(rule.action) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
             table.insert(ruleRows, entryFr)
@@ -1017,7 +1026,7 @@ end)
 
 local ruleEditor = CreateFrame("Frame", "CooldownHUD_RuleEditor", UIParent)
 ruleEditor:SetWidth(340)
-ruleEditor:SetHeight(280)
+ruleEditor:SetHeight(320)
 ruleEditor:SetFrameStrata("FULLSCREEN")
 ruleEditor:SetMovable(true)
 ruleEditor:SetClampedToScreen(true)
@@ -1028,7 +1037,7 @@ ruleEditor:Hide()
 -- Title
 local reTitle = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 reTitle:SetPoint("TOP", ruleEditor, "TOP", 0, -14)
-reTitle:SetText("New Glow Rule")
+reTitle:SetText("New Rule")
 
 -- Drag
 ruleEditor:SetScript("OnMouseDown", function() ruleEditor:StartMoving() end)
@@ -1055,6 +1064,28 @@ reSpellBtn:SetScript("OnClick", function()
     reSpellBtn:SetText(reSpellNames[reSpellIndex] or "")
 end)
 
+-- ---- Action Selector ----
+local reActionLabel = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+reActionLabel:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -68)
+reActionLabel:SetText("Action:")
+
+local reActionIndex = 1
+local reActionBtn = MakeButton(ruleEditor, 200, 22, CH.ruleActions[1].label)
+reActionBtn:SetPoint("LEFT", reActionLabel, "RIGHT", 8, 0)
+reActionBtn:SetScript("OnClick", function()
+    local numActions = table.getn(CH.ruleActions)
+    reActionIndex = math.mod(reActionIndex, numActions) + 1
+    reActionBtn:SetText(CH.ruleActions[reActionIndex].label)
+    reActionDesc:SetText(CH.ruleActions[reActionIndex].desc or "")
+end)
+
+-- Action description
+local reActionDesc = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+reActionDesc:SetPoint("TOPLEFT", reActionLabel, "BOTTOMLEFT", 0, -4)
+reActionDesc:SetWidth(310)
+reActionDesc:SetJustifyH("LEFT")
+reActionDesc:SetTextColor(0.6, 0.6, 0.6)
+
 -- ---- Condition Rows ----
 local NUM_CONDITIONS = 3
 local reCondTypes  = {}   -- current condition type index per condition row
@@ -1067,7 +1098,7 @@ local function GetCondLabel(typeIdx)
     return "None"
 end
 
-local condStartY = -72
+local condStartY = -108
 local condRowH   = 44
 
 for ci = 1, NUM_CONDITIONS do
@@ -1140,9 +1171,11 @@ reSaveBtn:SetScript("OnClick", function()
         end
     end
 
-    local newRule = { spell = spellName, conditions = conditions }
+    local actionId = CH.ruleActions[reActionIndex] and CH.ruleActions[reActionIndex].id or "glow"
+    local newRule = { spell = spellName, action = actionId, conditions = conditions }
     if not CH.db.customRules then CH.db.customRules = {} end
     table.insert(CH.db.customRules, newRule)
+    CH:InvalidateRulesCache()
 
     ruleEditor:Hide()
     CH:RefreshRulesTab()
@@ -1165,6 +1198,10 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
     else
         reSpellBtn:SetText("(no spells)")
     end
+    -- Reset action
+    reActionIndex = 1
+    reActionBtn:SetText(CH.ruleActions[1].label)
+    reActionDesc:SetText(CH.ruleActions[1].desc or "")
     -- Reset conditions
     for ci = 1, NUM_CONDITIONS do
         reCondTypes[ci] = 1

@@ -272,6 +272,26 @@ function CH:UpdateIconState(spellName)
         fr.texture:SetTexture(FALLBACK_ICON)
     end
 
+    -- Get active rule actions for this spell
+    local actions = CH:GetSpellActions(spellName)
+
+    -- "showOnly" action: hide icon unless rule fires
+    if actions["showOnly"] then
+        -- conditions met — show it (handled below)
+    elseif CH:HasRuleWithAction(spellName, "showOnly") then
+        -- has a showOnly rule but conditions NOT met — hide
+        fr:SetAlpha(0)
+        fr:Hide()
+        return
+    end
+
+    -- "hideWhen" action: hide icon when rule fires
+    if actions["hideWhen"] then
+        fr:SetAlpha(0)
+        fr:Hide()
+        return
+    end
+
     -- Hide outside combat / test mode
     if not (CH.inCombat or CH.testMode) then
         fr:SetAlpha(0)
@@ -300,9 +320,21 @@ function CH:UpdateIconState(spellName)
         fr.texture:SetAlpha(1)
     end
 
-    -- Glow logic: only glow when spell is ready (not on CD)
-    if CH:ShouldGlow(spellName) and not onCD then
-        -- Activate glow
+    -- "pulse" action: pulse icon opacity when not on CD
+    if actions["pulse"] and not onCD then
+        if not fr.actionPulsing then
+            fr.actionPulsing = true
+            fr.actionPulseElapsed = 0
+        end
+        fr.actionPulseElapsed = (fr.actionPulseElapsed or 0) + 0.05
+        local alpha = 0.75 + 0.25 * math.sin(fr.actionPulseElapsed * 2 * math.pi * 1.5)
+        fr.texture:SetAlpha(alpha)
+    else
+        fr.actionPulsing = false
+    end
+
+    -- "glow" action: gold border when not on CD
+    if actions["glow"] and not onCD then
         if not fr.glowActive then
             fr.glowElapsed = 0
             fr.glowActive  = true
@@ -311,7 +343,6 @@ function CH:UpdateIconState(spellName)
             fr.glowEdges[i]:Show()
         end
     else
-        -- Deactivate glow
         fr.glowActive = false
         for i = 1, 4 do
             fr.glowEdges[i]:Hide()

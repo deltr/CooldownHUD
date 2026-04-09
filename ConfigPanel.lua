@@ -762,7 +762,7 @@ local function ActionsLabel(rule)
         end
         return s
     end
-    return ActionsLabel(rule)
+    return ActionLabel(rule.action)
 end
 
 -- Build a one-line condition summary

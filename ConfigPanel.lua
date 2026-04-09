@@ -235,12 +235,13 @@ do
         y = y - 46
 
         local key = def.key
+        local closureLabel = def.label  -- Lua 5.0: capture loop var in local
         s:SetScript("OnValueChanged", function()
             local v = math.floor(this:GetValue() + 0.5)
             if not CH.db then return end
             CH.db[key] = v
             local lbl = getglobal("CooldownHUD_GenSlider_" .. key .. "Text")
-            if lbl then lbl:SetText(def.label .. ": " .. v) end
+            if lbl then lbl:SetText(closureLabel .. ": " .. v) end
             CH:ApplyLayout()
         end)
 
@@ -262,6 +263,7 @@ do
         y = y - 46
 
         local row = def.row
+        local closureLabel = def.label  -- Lua 5.0: capture loop var in local
         s:SetScript("OnValueChanged", function()
             local v = math.floor(this:GetValue() + 0.5)
             if not CH.db then return end
@@ -269,7 +271,7 @@ do
             if not CH.db.rows[row] then CH.db.rows[row] = {} end
             CH.db.rows[row].scale = v
             local lbl = getglobal("CooldownHUD_GenSlider_row" .. row .. "Text")
-            if lbl then lbl:SetText(def.label .. ": " .. v .. "%") end
+            if lbl then lbl:SetText(closureLabel .. ": " .. v .. "%") end
             -- Update rowData live
             if CH.rowData[row] then
                 CH.rowData[row].scale = v

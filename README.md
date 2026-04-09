@@ -9,8 +9,8 @@ A modular cooldown tracking HUD addon for **TurtleWoW** (WoW 1.12 / Interface 11
 ### Cooldown Tracking
 - Track any spell from your spellbook across up to 3 configurable rows
 - Cooldown sweep animation (top-to-bottom reveal as cooldown expires)
-- Red countdown timer scaled to icon size
-- Seal tracker with white duration timer and pulse alert when no seal is active
+- Red countdown timer (whole seconds) scaled to icon size
+- Paladin seal tracker with white duration timer and pulse alert when no seal is active
 - Greyscale Judgement icon when no seal is active
 
 ### Rule System
@@ -19,14 +19,10 @@ A modular cooldown tracking HUD addon for **TurtleWoW** (WoW 1.12 / Interface 11
 - **Conditions** (up to 3 per rule, AND logic):
   - Spell is off cooldown
   - Player has buff / Player missing buff
-  - Target HP below %
-  - Player HP below %
-  - Player mana below %
-  - In combat
-  - Has attackable target
-  - Target is undead
-- Preset rules included for Paladin (Retribution, Protection, Holy)
-- Custom rules with full editor UI
+  - Target HP below % / Player HP below % / Player mana below %
+  - In combat / Has attackable target / Target is undead
+- Preset rules for all 9 classes — contextual glow/pulse alerts for defensives, execute phases, interrupt reminders, mana warnings, and more
+- Custom rules with full editor UI (spell icon preview, action checkboxes, condition builder)
 
 ### Configuration Panel
 - **General tab**: Spec override, icon size/gap/row gap sliders, per-row scaling, lock position, test mode
@@ -38,7 +34,8 @@ A modular cooldown tracking HUD addon for **TurtleWoW** (WoW 1.12 / Interface 11
 ### Layout
 - Up to 3 rows of icons with independent scaling (25-150%)
 - Draggable HUD positioning (lockable)
-- Test mode shows all icons for easy layout adjustment
+- Test mode shows all icons (including rule-hidden ones) for easy layout adjustment
+- Auto-hides spells the player doesn't know
 
 ## Screenshots
 

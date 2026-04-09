@@ -192,6 +192,23 @@ function CH:InvalidateRulesCache()
     cachedRules = nil
 end
 
+-- Extract actions from a rule as a set. Supports both:
+--   rule.action  = "glow"           (old single-action format)
+--   rule.actions = {"glow","pulse"} (new multi-action format)
+local function RuleActionSet(rule)
+    local set = {}
+    if rule.actions then
+        for _, a in ipairs(rule.actions) do
+            set[a] = true
+        end
+    elseif rule.action then
+        set[rule.action] = true
+    else
+        set["glow"] = true
+    end
+    return set
+end
+
 function CH:GetSpellActions(spellName)
     if not cachedRules then
         cachedRules = CH:GetActiveRules()
@@ -200,8 +217,10 @@ function CH:GetSpellActions(spellName)
     for i = 1, table.getn(cachedRules) do
         local rule = cachedRules[i]
         if rule.spell == spellName and CH:EvaluateRule(rule) then
-            local action = rule.action or "glow"
-            actions[action] = true
+            local set = RuleActionSet(rule)
+            for a, _ in pairs(set) do
+                actions[a] = true
+            end
         end
     end
     return actions
@@ -214,8 +233,9 @@ function CH:HasRuleWithAction(spellName, actionId)
     end
     for i = 1, table.getn(cachedRules) do
         local rule = cachedRules[i]
-        if rule.spell == spellName and (rule.action or "glow") == actionId then
-            return true
+        if rule.spell == spellName then
+            local set = RuleActionSet(rule)
+            if set[actionId] then return true end
         end
     end
     return false

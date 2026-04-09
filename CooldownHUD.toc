@@ -1,0 +1,15 @@
+## Interface: 11200
+## Title: CooldownHUD
+## Notes: Cooldown tracking HUD with preset layouts and conditional glow alerts
+## SavedVariablesPerCharacter: CooldownHUDDB
+
+Core.lua
+SpellBook.lua
+SpecDetector.lua
+Presets\Paladin.lua
+CooldownTracker.lua
+ConditionEngine.lua
+IconFrame.lua
+LayoutEngine.lua
+ConfigPanel.lua
+MinimapButton.lua

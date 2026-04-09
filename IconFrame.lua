@@ -41,10 +41,14 @@ function CH:CreateIconFrame(spellName, size)
     tex:SetTexture(iconPath)
     fr.texture = tex
 
-    -- 2. Cooldown model (radial sweep) ------------------------------------
-    local cd = CreateFrame("Cooldown", name .. "_CD", fr)
-    cd:SetAllPoints(fr)
-    fr.cooldownModel = cd
+    -- 2. Cooldown overlay (dark tint when on CD) --------------------------
+    -- WoW 1.12 does not have CreateFrame("Cooldown"). We use a dark overlay
+    -- texture that covers the icon when on cooldown, plus the timer text.
+    local cdOverlay = fr:CreateTexture(name .. "_CDOverlay", "OVERLAY")
+    cdOverlay:SetAllPoints(fr)
+    cdOverlay:SetTexture(0, 0, 0, 0.6)
+    cdOverlay:Hide()
+    fr.cooldownOverlay = cdOverlay
 
     -- 3. Timer text -------------------------------------------------------
     -- Child frame sits above the cooldown model in the frame stack
@@ -167,17 +171,15 @@ function CH:UpdateIconState(spellName)
     local onCD = (remaining > 0)
 
     if onCD then
-        -- Activate radial sweep
-        fr.cooldownModel:SetCooldown(start, duration)
-        -- Timer text with colour
+        -- Show dark overlay and timer
+        fr.cooldownOverlay:Show()
         local text, r, g, b = CH:FormatTime(remaining)
         fr.timerText:SetText(text)
         fr.timerText:SetTextColor(r, g, b)
-        -- Dim icon texture
         fr.texture:SetAlpha(DIM_ALPHA)
     else
         -- Clear cooldown display
-        fr.cooldownModel:SetCooldown(0, 0)
+        fr.cooldownOverlay:Hide()
         fr.timerText:SetText("")
         fr.texture:SetAlpha(1)
     end

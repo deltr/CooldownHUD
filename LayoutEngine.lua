@@ -317,9 +317,9 @@ function CH:HideAllIcons()
             fr:Hide()
             fr:SetAlpha(0)
 
-            -- Clear cooldown sweep
-            if fr.cooldownModel then
-                fr.cooldownModel:SetCooldown(0, 0)
+            -- Clear cooldown overlay
+            if fr.cooldownOverlay then
+                fr.cooldownOverlay:Hide()
             end
 
             -- Clear timer text

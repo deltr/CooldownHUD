@@ -114,10 +114,8 @@ function CH:FormatTime(remaining)
         local m = math.floor(remaining / 60)
         local s = math.floor(remaining - m * 60)
         return string.format("%d:%02d", m, s), 1, 0, 0
-    elseif remaining > 10 then
-        return tostring(math.ceil(remaining)), 1, 0, 0
     else
-        return string.format("%.1f", remaining), 1, 0.8, 0
+        return tostring(math.ceil(remaining)), 1, 0, 0
     end
 end
 

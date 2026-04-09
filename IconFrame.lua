@@ -49,12 +49,14 @@ function CH:CreateIconFrame(spellName, size)
     tex:SetTexture(iconPath)
     fr.texture = tex
 
-    -- 2. Cooldown overlay (dark tint when on CD) --------------------------
-    -- WoW 1.12 does not have CreateFrame("Cooldown"). We use a dark overlay
-    -- texture that covers the icon when on cooldown, plus the timer text.
+    -- 2. Cooldown sweep overlay (vertical wipe from top to bottom) --------
+    -- WoW 1.12 has no CreateFrame("Cooldown"). We simulate a sweep by
+    -- anchoring a dark overlay from top, adjusting its height each tick.
     local cdOverlay = fr:CreateTexture(name .. "_CDOverlay", "OVERLAY")
-    cdOverlay:SetAllPoints(fr)
     cdOverlay:SetTexture(0, 0, 0, 0.6)
+    cdOverlay:SetPoint("BOTTOMLEFT", fr, "BOTTOMLEFT", 0, 0)
+    cdOverlay:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", 0, 0)
+    cdOverlay:SetHeight(size)
     cdOverlay:Hide()
     fr.cooldownOverlay = cdOverlay
 
@@ -64,7 +66,7 @@ function CH:CreateIconFrame(spellName, size)
     textFrame:SetAllPoints(fr)
     textFrame:SetFrameLevel(fr:GetFrameLevel() + 5)
 
-    local fontSize = math.max(12, math.min(48, math.floor(size * 0.45)))
+    local fontSize = math.max(12, math.floor(size * 0.55))
     local timerText = textFrame:CreateFontString(name .. "_Timer", "OVERLAY")
     timerText:SetFont("Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
     timerText:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
@@ -116,7 +118,7 @@ function CH:CreateIconFrame(spellName, size)
 
     fr.glowEdges = glowEdges
 
-    -- 5. Glow pulse OnUpdate ---------------------------------------------
+    -- 5. Glow pulse OnUpdate ------------------------------------------------
     fr:SetScript("OnUpdate", function()
         if fr.glowActive then
             fr.glowElapsed = fr.glowElapsed + arg1
@@ -209,9 +211,9 @@ function CH:UpdateSealTracker(fr)
         fr.sealPulsing = false
 
         if timeLeft and timeLeft > 0 then
-            local text, r, g, b = CH:FormatTime(timeLeft)
+            local text = CH:FormatTime(timeLeft)
             fr.timerText:SetText(text)
-            fr.timerText:SetTextColor(r, g, b)
+            fr.timerText:SetTextColor(1, 1, 1)
         else
             fr.timerText:SetText("")
         end
@@ -275,21 +277,24 @@ function CH:UpdateIconState(spellName)
     -- Get active rule actions for this spell
     local actions = CH:GetSpellActions(spellName)
 
-    -- "showOnly" action: hide icon unless rule fires
-    if actions["showOnly"] then
-        -- conditions met — show it (handled below)
-    elseif CH:HasRuleWithAction(spellName, "showOnly") then
-        -- has a showOnly rule but conditions NOT met — hide
-        fr:SetAlpha(0)
-        fr:Hide()
-        return
-    end
+    -- In test mode, skip show/hide rules so all icons remain visible
+    if not CH.testMode then
+        -- "showOnly" action: hide icon unless rule fires
+        if actions["showOnly"] then
+            -- conditions met — show it (handled below)
+        elseif CH:HasRuleWithAction(spellName, "showOnly") then
+            -- has a showOnly rule but conditions NOT met — hide
+            fr:SetAlpha(0)
+            fr:Hide()
+            return
+        end
 
-    -- "hideWhen" action: hide icon when rule fires
-    if actions["hideWhen"] then
-        fr:SetAlpha(0)
-        fr:Hide()
-        return
+        -- "hideWhen" action: hide icon when rule fires
+        if actions["hideWhen"] then
+            fr:SetAlpha(0)
+            fr:Hide()
+            return
+        end
     end
 
     -- Hide outside combat / test mode
@@ -313,11 +318,31 @@ function CH:UpdateIconState(spellName)
         fr.timerText:SetText(text)
         fr.timerText:SetTextColor(r, g, b)
         fr.texture:SetAlpha(DIM_ALPHA)
+        -- Sweep: overlay height shrinks as cooldown expires (top-to-bottom reveal)
+        local progress = 1 - (remaining / duration)
+        local h = (1 - progress) * fr.iconSize
+        if h < 2 then h = 2 end
+        fr.cooldownOverlay:SetHeight(h)
     else
         -- Clear cooldown display
         fr.cooldownOverlay:Hide()
         fr.timerText:SetText("")
         fr.texture:SetAlpha(1)
+    end
+
+    -- Greyscale Judgement when no seal is active (WoW 1.12: use SetVertexColor)
+    if spellName == "Judgement" and not onCD then
+        local sealTex = GetActiveSeal()
+        if not sealTex then
+            fr.texture:SetVertexColor(0.4, 0.4, 0.4)
+            fr.desaturated = true
+        else
+            fr.texture:SetVertexColor(1, 1, 1)
+            fr.desaturated = false
+        end
+    elseif fr.desaturated then
+        fr.texture:SetVertexColor(1, 1, 1)
+        fr.desaturated = false
     end
 
     -- "pulse" action: pulse icon opacity when not on CD
@@ -362,7 +387,7 @@ function CH:ResizeIconFrame(spellName, newSize)
     fr:SetHeight(newSize)
     fr.iconSize = newSize
 
-    local fontSize = math.max(12, math.min(48, math.floor(newSize * 0.45)))
+    local fontSize = math.max(12, math.floor(newSize * 0.55))
     local fontFace, _, fontFlags = fr.timerText:GetFont()
     fr.timerText:SetFont(fontFace or "Fonts\\FRIZQT__.TTF", fontSize, fontFlags or "OUTLINE")
 end

@@ -86,6 +86,7 @@ end
 -------------------------------------------------------------------------------
 
 function CH:ApplyLayout()
+    if not CH.db then return end
     local posX    = CH.db.posX    or 0
     local posY    = CH.db.posY    or -200
     local baseSize = CH.db.iconSize or 48
@@ -404,7 +405,7 @@ end)
 
 -- TEST_MODE_CHANGED: enable drag when test, show/hide accordingly
 CH:RegisterEvent("TEST_MODE_CHANGED", function(enabled)
-    CH:SetDragEnabled(enabled)
+    CH:SetDragEnabled(enabled and not CH.db.locked)
     if enabled then
         CH:ShowAllIcons()
         CH:UpdateAllIcons()

@@ -98,6 +98,12 @@ local Evaluators = {
             and UnitCanAttack("player", "target")
             and not UnitIsDead("target")
     end,
+
+    targetIsUndead = function(spellName, param)
+        if not UnitExists("target") then return false end
+        local ctype = UnitCreatureType("target")
+        return ctype == "Undead"
+    end,
 }
 
 -------------------------------------------------------------------------------
@@ -311,6 +317,13 @@ CH.conditionTypes = {
         id       = "hasAttackableTarget",
         label    = "Has attackable target",
         desc     = "Glow only when you have a living, hostile target selected",
+        hasParam = false,
+        paramType = nil,
+    },
+    {
+        id       = "targetIsUndead",
+        label    = "Target is undead",
+        desc     = "True when your target is an Undead creature type",
         hasParam = false,
         paramType = nil,
     },

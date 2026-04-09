@@ -18,10 +18,7 @@ btn:EnableMouse(true)
 btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 btn:RegisterForDrag("LeftButton")
 
--- Highlight texture
-local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-highlight:SetAllPoints()
+-- No highlight — the border ring provides enough visual feedback
 
 -- Overlay texture (border ring)
 local overlay = btn:CreateTexture(nil, "OVERLAY")
@@ -31,7 +28,7 @@ overlay:SetHeight(56)
 overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
 
 -- Icon texture
-local icon = btn:CreateTexture(nil, "BACKGROUND")
+local icon = btn:CreateTexture(nil, "ARTWORK")
 icon:SetTexture("Interface\\Icons\\Spell_Holy_SealOfMight")
 icon:SetWidth(20)
 icon:SetHeight(20)
@@ -113,7 +110,8 @@ btn:SetScript("OnLeave", function()
     GameTooltip:Hide()
 end)
 
--- Register for INIT event to set initial position
+-- Register for INIT event to set initial position and show
 CH:RegisterEvent("INIT", function()
     updatePosition()
+    btn:Show()
 end)

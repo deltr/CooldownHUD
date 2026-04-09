@@ -41,7 +41,12 @@ function CH:LoadLayout()
     local preset = CH.Presets[class][spec]
 
     -- 1. Destroy all existing icon frames
+    -- Collect names first to avoid modifying table during pairs() iteration
+    local oldNames = {}
     for name, _ in pairs(CH.iconFrames) do
+        oldNames[table.getn(oldNames) + 1] = name
+    end
+    for _, name in ipairs(oldNames) do
         CH:DestroyIconFrame(name)
     end
     CH.iconFrames   = {}

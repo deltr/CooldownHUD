@@ -37,11 +37,11 @@ function CH:DetectSpec()
     local numTabs = GetNumTalentTabs()
     if not numTabs or numTabs == 0 then
         -- Talent data not yet available; default to last tree
-        self.detectedSpec = trees[#trees]
+        self.detectedSpec = trees[table.getn(trees)]
         return
     end
 
-    local bestTree  = #trees   -- default: last tree (Retribution for Paladin)
+    local bestTree  = table.getn(trees)   -- default: last tree (Retribution for Paladin)
     local bestCount = -1
     local tie       = false
 
@@ -66,9 +66,9 @@ function CH:DetectSpec()
         end
     end
 
-    -- On a tie default to the last tree (index = #trees)
+    -- On a tie default to the last tree (index = table.getn(trees))
     if tie then
-        bestTree = #trees
+        bestTree = table.getn(trees)
     end
 
     self.detectedSpec = trees[bestTree]

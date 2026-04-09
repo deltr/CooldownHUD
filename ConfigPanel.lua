@@ -207,7 +207,7 @@ do
             if v == current then curIdx = i; break end
         end
         -- Advance
-        local nextIdx = (curIdx % table.getn(opts)) + 1
+        local nextIdx = (math.mod(curIdx, table.getn(opts))) + 1
         local nextSpec = opts[nextIdx]
         CH:SetSpecOverride(nextSpec)
         if nextSpec == "" then
@@ -496,7 +496,7 @@ function CH:RefreshSpellsTab()
                 end
                 if not curRow then return end
                 -- Cycle to next row
-                local nextRow = (curRow % table.getn(CH.rowData)) + 1
+                local nextRow = (math.mod(curRow, table.getn(CH.rowData))) + 1
                 -- Remove from current row
                 local oldSpells = CH.rowData[curRow].spells
                 local newOld = {}
@@ -850,7 +850,7 @@ local sbRowBtn = MakeButton(spellBrowser, 46, 20, "Row 1")
 sbRowBtn:SetPoint("LEFT", sbRowLabel, "RIGHT", 6, 0)
 sbRowBtn:SetScript("OnClick", function()
     local numRows = math.max(1, table.getn(CH.rowData))
-    sbTargetRow = (sbTargetRow % numRows) + 1
+    sbTargetRow = (math.mod(sbTargetRow, numRows)) + 1
     sbRowBtn:SetText("Row " .. sbTargetRow)
 end)
 
@@ -997,7 +997,7 @@ local reSpellBtn = MakeButton(ruleEditor, 200, 22, "")
 reSpellBtn:SetPoint("LEFT", reSpellLabel, "RIGHT", 8, 0)
 reSpellBtn:SetScript("OnClick", function()
     if table.getn(reSpellNames) == 0 then return end
-    reSpellIndex = (reSpellIndex % table.getn(reSpellNames)) + 1
+    reSpellIndex = (math.mod(reSpellIndex, table.getn(reSpellNames))) + 1
     reSpellBtn:SetText(reSpellNames[reSpellIndex] or "")
 end)
 
@@ -1035,7 +1035,7 @@ for ci = 1, NUM_CONDITIONS do
     local closureCI = ci
     typeBtn:SetScript("OnClick", function()
         local numTypes = table.getn(CH.conditionTypes)
-        reCondTypes[closureCI] = (reCondTypes[closureCI] % numTypes) + 1
+        reCondTypes[closureCI] = (math.mod(reCondTypes[closureCI], numTypes)) + 1
         typeBtn:SetText(GetCondLabel(reCondTypes[closureCI]))
         -- Show/hide param box based on hasParam
         local ct = CH.conditionTypes[reCondTypes[closureCI]]

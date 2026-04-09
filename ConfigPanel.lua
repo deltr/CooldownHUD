@@ -52,6 +52,96 @@ local function MakeButton(parent, w, h, text)
     return btn
 end
 
+-- Creates a reusable dropdown selector.
+-- parent: parent frame
+-- w, h: button dimensions
+-- getOptions: function() returning { {label="X", value=Y}, ... }
+-- onSelect: function(value, label) called when user picks an option
+-- Returns: the trigger button (call btn:SetText() to update display)
+--
+-- Usage: local btn = MakeDropdown(parent, 120, 20,
+--   function() return { {label="A",value=1}, {label="B",value=2} } end,
+--   function(val, lbl) doStuff(val) end)
+local activeDropdown = nil  -- only one dropdown open at a time
+
+local function MakeDropdown(parent, w, h, getOptions, onSelect)
+    local btn = MakeButton(parent, w, h, "")
+
+    local popup = CreateFrame("Frame", nil, UIParent)
+    popup:SetFrameStrata("TOOLTIP")
+    popup:SetBackdrop({
+        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true, tileSize = 16, edgeSize = 12,
+        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    popup:SetWidth(w)
+    popup:EnableMouse(true)
+    popup:Hide()
+    btn._dropdown = popup
+
+    btn:SetScript("OnClick", function()
+        -- Close any other open dropdown
+        if activeDropdown and activeDropdown ~= popup then
+            activeDropdown:Hide()
+        end
+        if popup:IsVisible() then
+            popup:Hide()
+            activeDropdown = nil
+            return
+        end
+
+        -- Clear old children
+        local old = { popup:GetChildren() }
+        for _, c in ipairs(old) do c:Hide() end
+
+        local opts = getOptions()
+        local numOpts = table.getn(opts)
+        if numOpts == 0 then return end
+
+        local optH = 20
+        local pad = 6
+        popup:SetHeight(numOpts * optH + pad * 2)
+        popup:SetWidth(math.max(w, 80))
+        popup:ClearAllPoints()
+        popup:SetPoint("TOP", btn, "BOTTOM", 0, -2)
+
+        for i = 1, numOpts do
+            local opt = opts[i]
+            local optBtn = CreateFrame("Button", nil, popup)
+            optBtn:SetWidth(popup:GetWidth() - pad * 2)
+            optBtn:SetHeight(optH)
+            optBtn:SetPoint("TOPLEFT", popup, "TOPLEFT", pad, -pad - (i - 1) * optH)
+
+            -- Highlight on hover
+            local hl = optBtn:CreateTexture(nil, "HIGHLIGHT")
+            hl:SetAllPoints(optBtn)
+            hl:SetTexture(1, 1, 1, 0.15)
+
+            local lbl = optBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            lbl:SetPoint("LEFT", optBtn, "LEFT", 4, 0)
+            lbl:SetText(opt.label)
+            lbl:SetJustifyH("LEFT")
+
+            local closureVal = opt.value
+            local closureLbl = opt.label
+            optBtn:SetScript("OnClick", function()
+                btn:SetText(closureLbl)
+                popup:Hide()
+                activeDropdown = nil
+                if onSelect then
+                    onSelect(closureVal, closureLbl)
+                end
+            end)
+        end
+
+        popup:Show()
+        activeDropdown = popup
+    end)
+
+    return btn
+end
+
 -- Creates a slider using OptionsSliderTemplate.
 -- Returns slider, textLabel, lowLabel, highLabel
 local function MakeSlider(parent, name, w, min, max, step, labelText, lowText, highText)
@@ -195,32 +285,22 @@ do
     specOverrideLabel:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
     specOverrideLabel:SetText("Spec Override:")
 
-    local specBtn = MakeButton(genPanel, 140, 22, "Auto-Detect")
+    local specBtn = MakeDropdown(genPanel, 140, 22,
+        function()
+            local out = { { label = "Auto-Detect", value = "" } }
+            local specNames = CH:GetSpecNames()
+            for _, v in ipairs(specNames) do
+                table.insert(out, { label = v, value = v })
+            end
+            return out
+        end,
+        function(val, lbl)
+            CH:SetSpecOverride(val)
+            CH:RefreshGeneralTab()
+        end
+    )
+    specBtn:SetText("Auto-Detect")
     specBtn:SetPoint("LEFT", specOverrideLabel, "RIGHT", 10, 0)
-    specBtn:SetScript("OnClick", function()
-        local specNames = CH:GetSpecNames()
-        local current   = CH.db.spec or ""
-        -- Build ordered list: "", then each spec name
-        local opts = { "" }
-        for _, v in ipairs(specNames) do
-            table.insert(opts, v)
-        end
-        -- Find current index
-        local curIdx = 1
-        for i, v in ipairs(opts) do
-            if v == current then curIdx = i; break end
-        end
-        -- Advance
-        local nextIdx = (math.mod(curIdx, table.getn(opts))) + 1
-        local nextSpec = opts[nextIdx]
-        CH:SetSpecOverride(nextSpec)
-        if nextSpec == "" then
-            specBtn:SetText("Auto-Detect")
-        else
-            specBtn:SetText(nextSpec)
-        end
-        CH:RefreshGeneralTab()
-    end)
 
     y = y - 44
 
@@ -495,43 +575,40 @@ function CH:RefreshSpellsTab()
             nameLabel:SetJustifyH("LEFT")
             nameLabel:SetText(spellName)
 
-            -- Row assignment button (cycles R1->R2->R3->R1)
-            local numRows = table.getn(rowData)
-            local rowBtn  = MakeButton(entryFr, 36, 18, GetRowLabel(rowIdx))
-            rowBtn:SetPoint("LEFT", nameLabel, "RIGHT", 6, 0)
-            local closureRowIdx   = rowIdx
-            local closureSpellIdx = spellIdx
+            -- Row assignment dropdown
             local closureSpellName = spellName
-            rowBtn:SetScript("OnClick", function()
-                -- Find current row
-                local curRow = nil
-                for ri, rd in ipairs(CH.rowData) do
-                    for si, sn in ipairs(rd.spells) do
-                        if sn == closureSpellName then
-                            curRow = ri
-                            break
+            local closureRowIdx = rowIdx
+            local rowBtn = MakeDropdown(entryFr, 42, 18,
+                function()
+                    local out = {}
+                    for ri = 1, table.getn(CH.rowData) do
+                        table.insert(out, { label = "R" .. ri, value = ri })
+                    end
+                    return out
+                end,
+                function(targetRow)
+                    -- Remove from current row
+                    local curRow = nil
+                    for ri, rd in ipairs(CH.rowData) do
+                        for _, sn in ipairs(rd.spells) do
+                            if sn == closureSpellName then curRow = ri; break end
                         end
+                        if curRow then break end
                     end
-                    if curRow then break end
-                end
-                if not curRow then return end
-                -- Cycle to next row
-                local nextRow = (math.mod(curRow, table.getn(CH.rowData))) + 1
-                -- Remove from current row
-                local oldSpells = CH.rowData[curRow].spells
-                local newOld = {}
-                for _, sn in ipairs(oldSpells) do
-                    if sn ~= closureSpellName then
-                        table.insert(newOld, sn)
+                    if not curRow or curRow == targetRow then return end
+                    local newOld = {}
+                    for _, sn in ipairs(CH.rowData[curRow].spells) do
+                        if sn ~= closureSpellName then table.insert(newOld, sn) end
                     end
+                    CH.rowData[curRow].spells = newOld
+                    table.insert(CH.rowData[targetRow].spells, closureSpellName)
+                    CH:SaveRowOverrides()
+                    CH:ApplyLayout()
+                    CH:RefreshSpellsTab()
                 end
-                CH.rowData[curRow].spells = newOld
-                -- Add to next row
-                table.insert(CH.rowData[nextRow].spells, closureSpellName)
-                CH:SaveRowOverrides()
-                CH:ApplyLayout()
-                CH:RefreshSpellsTab()
-            end)
+            )
+            rowBtn:SetText(GetRowLabel(rowIdx))
+            rowBtn:SetPoint("LEFT", nameLabel, "RIGHT", 6, 0)
 
             -- Up button
             local upBtn = MakeButton(entryFr, 24, 18, "^")
@@ -1133,13 +1210,21 @@ reSpellLabel:SetText("Spell:")
 local reSpellIndex  = 1
 local reSpellNames  = {}
 
-local reSpellBtn = MakeButton(ruleEditor, 200, 22, "")
+local reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
+    function()
+        local out = {}
+        for i = 1, table.getn(reSpellNames) do
+            local n = reSpellNames[i]
+            table.insert(out, { label = n, value = i })
+        end
+        return out
+    end,
+    function(val)
+        reSpellIndex = val
+        reSpellBtn:SetText(reSpellNames[val] or "")
+    end
+)
 reSpellBtn:SetPoint("LEFT", reSpellLabel, "RIGHT", 8, 0)
-reSpellBtn:SetScript("OnClick", function()
-    if table.getn(reSpellNames) == 0 then return end
-    reSpellIndex = (math.mod(reSpellIndex, table.getn(reSpellNames))) + 1
-    reSpellBtn:SetText(reSpellNames[reSpellIndex] or "")
-end)
 
 -- ---- Action Selector ----
 local reActionLabel = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1147,14 +1232,23 @@ reActionLabel:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -68)
 reActionLabel:SetText("Action:")
 
 local reActionIndex = 1
-local reActionBtn = MakeButton(ruleEditor, 200, 22, CH.ruleActions[1].label)
+local reActionBtn = MakeDropdown(ruleEditor, 200, 22,
+    function()
+        local out = {}
+        for i = 1, table.getn(CH.ruleActions) do
+            local a = CH.ruleActions[i]
+            table.insert(out, { label = a.label, value = i })
+        end
+        return out
+    end,
+    function(val)
+        reActionIndex = val
+        reActionBtn:SetText(CH.ruleActions[val].label)
+        reActionDesc:SetText(CH.ruleActions[val].desc or "")
+    end
+)
+reActionBtn:SetText(CH.ruleActions[1].label)
 reActionBtn:SetPoint("LEFT", reActionLabel, "RIGHT", 8, 0)
-reActionBtn:SetScript("OnClick", function()
-    local numActions = table.getn(CH.ruleActions)
-    reActionIndex = math.mod(reActionIndex, numActions) + 1
-    reActionBtn:SetText(CH.ruleActions[reActionIndex].label)
-    reActionDesc:SetText(CH.ruleActions[reActionIndex].desc or "")
-end)
 
 -- Action description
 local reActionDesc = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1189,24 +1283,36 @@ for ci = 1, NUM_CONDITIONS do
 
     local condY = condStartY - (ci - 1) * condRowH
 
-    -- Condition type cycle button
+    -- Condition type dropdown
     reCondTypes[ci] = 1
     local typeBtnY = condY - 16
-    local typeBtn  = MakeButton(ruleEditor, 190, 20, GetCondLabel(1))
-    typeBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, typeBtnY)
     local closureCI = ci
-    typeBtn:SetScript("OnClick", function()
-        local numTypes = table.getn(CH.conditionTypes)
-        reCondTypes[closureCI] = (math.mod(reCondTypes[closureCI], numTypes)) + 1
-        typeBtn:SetText(GetCondLabel(reCondTypes[closureCI]))
-        -- Show/hide param box based on hasParam
-        local ct = CH.conditionTypes[reCondTypes[closureCI]]
-        if ct and ct.hasParam then
-            reCondBoxes[closureCI]:Show()
-        else
-            reCondBoxes[closureCI]:Hide()
+    local typeBtn = MakeDropdown(ruleEditor, 190, 20,
+        function()
+            local out = { { label = "(none)", value = 0 } }
+            for ti = 1, table.getn(CH.conditionTypes) do
+                table.insert(out, { label = CH.conditionTypes[ti].label, value = ti })
+            end
+            return out
+        end,
+        function(val)
+            reCondTypes[closureCI] = val
+            if val == 0 then
+                reCondBtns[closureCI]:SetText("(none)")
+                reCondBoxes[closureCI]:Hide()
+            else
+                reCondBtns[closureCI]:SetText(GetCondLabel(val))
+                local ct = CH.conditionTypes[val]
+                if ct and ct.hasParam then
+                    reCondBoxes[closureCI]:Show()
+                else
+                    reCondBoxes[closureCI]:Hide()
+                end
+            end
         end
-    end)
+    )
+    typeBtn:SetText(GetCondLabel(1))
+    typeBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, typeBtnY)
     reCondBtns[ci] = typeBtn
 
     -- Param EditBox

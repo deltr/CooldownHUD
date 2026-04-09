@@ -16,16 +16,17 @@ local DEFAULTS = {
     posX                = 0,
     posY                = -200,
     locked              = false,
-    iconSize            = 36,
+    iconSize            = 48,
     iconGap             = 4,
     rowGap              = 4,
-    rows                = 2,
+    rows                = {},     -- per-row overrides (populated on load)
     customRules         = {},
     disabledPresetRules = {},
-    cfgX                = 100,
-    cfgY                = -200,
-    minimapAngle        = 225,
+    cfgX                = 0,
+    cfgY                = 0,
+    minimapAngle        = 220,
 }
+CH.defaults = DEFAULTS
 
 -------------------------------------------------------------------------------
 -- Database bootstrap
@@ -54,26 +55,20 @@ end
 
 function CH:MigrateFromPaladinAlerts()
     if not PaladinAlertsDB then return end
-    local src = PaladinAlertsDB
-    local db  = self.db
+    if self.db._migrated then return end
 
-    -- Migrate position
-    if src.posX ~= nil and db.posX == DEFAULTS.posX then
-        db.posX = src.posX
-    end
-    if src.posY ~= nil and db.posY == DEFAULTS.posY then
-        db.posY = src.posY
-    end
+    local old = PaladinAlertsDB
+    if old.rowX then self.db.posX = old.rowX end
+    if old.rowY then self.db.posY = old.rowY end
+    if old.iconSize then self.db.iconSize = old.iconSize end
+    if old.iconGap then self.db.iconGap = old.iconGap end
+    if old.rowGap then self.db.rowGap = old.rowGap end
 
-    -- Migrate icon size
-    if src.iconSize ~= nil and db.iconSize == DEFAULTS.iconSize then
-        db.iconSize = src.iconSize
-    end
-
-    -- Migrate locked state
-    if src.locked ~= nil and db.locked == DEFAULTS.locked then
-        db.locked = src.locked
-    end
+    self.db._migrated = true
+    DEFAULT_CHAT_FRAME:AddMessage(
+        "|cff00ccffCooldownHUD:|r PaladinAlerts has been upgraded to CooldownHUD. "
+        .. "Your position and size settings have been preserved."
+    )
 end
 
 -------------------------------------------------------------------------------
@@ -113,15 +108,16 @@ CH.playerClass = nil
 -- >60s  : "M:SS"  in red
 -- 10-60s: whole seconds in red
 -- <10s  : one decimal place in yellow
+-- Returns: text, r, g, b (separate values for FontString use)
 function CH:FormatTime(remaining)
     if remaining > 60 then
         local m = math.floor(remaining / 60)
-        local s = math.floor(remaining % 60)
-        return string.format("|cffff0000%d:%02d|r", m, s)
-    elseif remaining >= 10 then
-        return string.format("|cffff0000%d|r", math.floor(remaining))
+        local s = math.floor(remaining - m * 60)
+        return string.format("%d:%02d", m, s), 1, 0, 0
+    elseif remaining > 10 then
+        return tostring(math.ceil(remaining)), 1, 0, 0
     else
-        return string.format("|cffffff00%.1f|r", remaining)
+        return string.format("%.1f", remaining), 1, 0.8, 0
     end
 end
 
@@ -153,6 +149,7 @@ bootFrame:SetScript("OnEvent", function()
         CH.playerClass = englishClass
 
         CH:FireEvent("INIT")
+        CH:FireEvent("SPELLS_CHANGED")
 
     elseif event == "PLAYER_REGEN_DISABLED" then
         CH.inCombat = true

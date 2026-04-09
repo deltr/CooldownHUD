@@ -624,6 +624,7 @@ local function FindDropTarget(cursorY)
         end
     end
 
+    if bestIdx < 1 then bestIdx = 1 end
     return bestRow, bestIdx
 end
 
@@ -777,6 +778,14 @@ function CH:RefreshSpellsTab()
         headerFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 4, -y)
         table.insert(spellRows, headerFr)
         y = y + 22
+
+        -- Register row header as a drop target (insert at position 1)
+        table.insert(spellEntryPositions, {
+            rowIdx = rowIdx,
+            spellIdx = 0,
+            top = y - 22,
+            bottom = y,
+        })
 
         for spellIdx = 1, table.getn(spells) do
             local spellName = spells[spellIdx]

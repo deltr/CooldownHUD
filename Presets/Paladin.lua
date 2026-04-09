@@ -85,11 +85,11 @@ CH.Presets["PALADIN"] = {
         rows = {
             {
                 scale = 100,
-                spells = { "Holy Shock", "Holy Light", "Flash of Light", "Divine Favor" },
+                spells = { "Holy Shock", "Hammer of Justice", "Consecration", "Exorcism" },
             },
             {
                 scale = 70,
-                spells = { "Holy Strike", "Hammer of Justice", "Cleanse", "Exorcism" },
+                spells = { "Holy Strike", "Cleanse", "Holy Wrath" },
             },
             {
                 scale = 55,
@@ -103,14 +103,6 @@ CH.Presets["PALADIN"] = {
                 conditions = {
                     { "offCooldown" },
                     { "inCombat" },
-                },
-            },
-            {
-                spell = "Divine Favor",
-                action = "glow",
-                conditions = {
-                    { "offCooldown" },
-                    { "playerManaBelow", 50 },
                 },
             },
             {

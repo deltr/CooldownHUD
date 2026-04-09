@@ -373,8 +373,11 @@ CH:RegisterEvent("INIT", function()
     end
 end)
 
--- SPEC_CHANGED: reload layout, hide if not in combat/test mode
+-- SPEC_CHANGED: clear overrides and reload from preset for the new spec
 CH:RegisterEvent("SPEC_CHANGED", function()
+    if CH.db then
+        CH.db.rows = nil
+    end
     CH:LoadLayout()
     if not CH.inCombat and not CH.testMode then
         CH:HideAllIcons()

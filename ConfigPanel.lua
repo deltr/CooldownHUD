@@ -28,6 +28,21 @@ local function MakeBackdrop(bgFile, edgeFile)
     }
 end
 
+-- Enables mouse-wheel scrolling on a ScrollFrame
+local function EnableScrollWheel(scrollFrame)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function()
+        local cur = scrollFrame:GetVerticalScroll()
+        local max = scrollFrame:GetVerticalScrollRange()
+        local step = 40
+        local delta = arg1  -- WoW 1.12 global: +1 up, -1 down
+        local newVal = cur - (delta * step)
+        if newVal < 0 then newVal = 0 end
+        if newVal > max then newVal = max end
+        scrollFrame:SetVerticalScroll(newVal)
+    end)
+end
+
 -- Creates a simple UIPanelButtonTemplate button
 local function MakeButton(parent, w, h, text)
     local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -384,6 +399,7 @@ local spellContent = CreateFrame("Frame", "CooldownHUD_SpellContent", spellScrol
 spellContent:SetWidth(contentW - 10)
 spellContent:SetHeight(1)
 spellScroll:SetScrollChild(spellContent)
+EnableScrollWheel(spellScroll)
 
 -- "+ Add Spell" button at bottom of spells panel
 local addSpellBtn = MakeButton(spellsPanel, 110, 22, "+ Add Spell")
@@ -604,6 +620,7 @@ local rulesContent = CreateFrame("Frame", "CooldownHUD_RulesContent", rulesScrol
 rulesContent:SetWidth(contentW - 10)
 rulesContent:SetHeight(1)
 rulesScroll:SetScrollChild(rulesContent)
+EnableScrollWheel(rulesScroll)
 
 -- "+ New Rule" button
 local addRuleBtn = MakeButton(rulesPanel, 110, 22, "+ New Rule")
@@ -846,6 +863,7 @@ local sbContent = CreateFrame("Frame", "CooldownHUD_SBContent", sbScroll)
 sbContent:SetWidth(250)
 sbContent:SetHeight(1)
 sbScroll:SetScrollChild(sbContent)
+EnableScrollWheel(sbScroll)
 
 local sbRows = {}
 
@@ -1002,12 +1020,12 @@ for ci = 1, NUM_CONDITIONS do
     if ci > 1 then
         -- AND label
         local andLbl = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        andLbl:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, condStartY + (ci - 1) * condRowH - 6)
+        andLbl:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, condStartY - (ci - 1) * condRowH - 6)
         andLbl:SetText("AND")
         andLbl:SetTextColor(0.6, 0.6, 0.6, 1)
     end
 
-    local condY = condStartY + (ci - 1) * condRowH
+    local condY = condStartY - (ci - 1) * condRowH
 
     -- Condition type cycle button
     reCondTypes[ci] = 1

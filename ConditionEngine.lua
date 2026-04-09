@@ -170,16 +170,30 @@ end
 -- Returns true if any active rule for this spell evaluates to true.
 -------------------------------------------------------------------------------
 
+-- Cached rules array, rebuilt on spec/rule changes instead of every frame
+local cachedRules = nil
+
+function CH:InvalidateRulesCache()
+    cachedRules = nil
+end
+
 function CH:ShouldGlow(spellName)
-    local rules = CH:GetActiveRules()
-    for i = 1, table.getn(rules) do
-        local rule = rules[i]
+    if not cachedRules then
+        cachedRules = CH:GetActiveRules()
+    end
+    for i = 1, table.getn(cachedRules) do
+        local rule = cachedRules[i]
         if rule.spell == spellName and CH:EvaluateRule(rule) then
             return true
         end
     end
     return false
 end
+
+-- Invalidate cache when spec or rules change
+CH:RegisterEvent("SPEC_CHANGED", function()
+    cachedRules = nil
+end)
 
 -------------------------------------------------------------------------------
 -- CH.conditionTypes

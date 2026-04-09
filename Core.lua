@@ -84,11 +84,11 @@ function CH:RegisterEvent(event, callback)
     table.insert(self._eventListeners[event], callback)
 end
 
-function CH:FireEvent(event, ...)
+function CH:FireEvent(event, arg1, arg2, arg3)
     local listeners = self._eventListeners[event]
     if not listeners then return end
     for _, cb in ipairs(listeners) do
-        cb(...)
+        cb(arg1, arg2, arg3)
     end
 end
 

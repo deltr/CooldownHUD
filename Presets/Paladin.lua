@@ -23,26 +23,18 @@ CH.Presets["PALADIN"] = {
         glowRules = {
             {
                 spell = "Hammer of Wrath",
-                action = "pulse",
+                actions = { "glow", "pulse", "showOnly" },
                 conditions = {
-                    { "offCooldown" },
                     { "targetHpBelow", 20 },
+                    { "offCooldown" },
                 },
             },
             {
-                spell = "Crusader Strike",
-                action = "glow",
+                spell = "Exorcism",
+                actions = { "glow" },
                 conditions = {
+                    { "targetIsUndead" },
                     { "offCooldown" },
-                    { "inCombat" },
-                },
-            },
-            {
-                spell = "Judgement",
-                action = "glow",
-                conditions = {
-                    { "offCooldown" },
-                    { "inCombat" },
                 },
             },
         },

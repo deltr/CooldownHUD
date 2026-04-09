@@ -10,7 +10,7 @@ local CH = CooldownHUD
 -------------------------------------------------------------------------------
 
 local PANEL_W      = 420
-local PANEL_H      = 500
+local PANEL_H      = 600
 local TAB_H        = 24
 local CONTENT_TOP  = -86   -- y-offset from panel top where tab content starts (below tabs)
 local CONTENT_PAD  = 14
@@ -70,12 +70,13 @@ local function MakeDropdown(parent, w, h, getOptions, onSelect)
     local popup = CreateFrame("Frame", nil, UIParent)
     popup:SetFrameStrata("TOOLTIP")
     popup:SetBackdrop({
-        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile     = true, tileSize = 16, edgeSize = 12,
         insets   = { left = 3, right = 3, top = 3, bottom = 3 },
     })
     popup:SetWidth(w)
+    popup:SetBackdropColor(0.1, 0.1, 0.1, 1)
     popup:EnableMouse(true)
     popup:Hide()
     btn._dropdown = popup
@@ -157,6 +158,63 @@ local function MakeSlider(parent, name, w, min, max, step, labelText, lowText, h
     if low  then low:SetText(tostring(lowText  or min)) end
     if high then high:SetText(tostring(highText or max)) end
     return s, lbl, low, high
+end
+
+-- Creates a checkbox using OptionsCheckButtonTemplate.
+-- Returns the CheckButton frame. Label text appears to the right.
+local cbCounter = 0
+local function MakeCheckbox(parent, label, tooltip)
+    cbCounter = cbCounter + 1
+    local name = "CooldownHUD_CB" .. cbCounter
+    local cb = CreateFrame("CheckButton", name, parent, "OptionsCheckButtonTemplate")
+    cb:SetWidth(25)
+    cb:SetHeight(25)
+    local txt = getglobal(name .. "Text")
+    if txt then
+        txt:SetText(label or "")
+        txt:SetFontObject(GameFontNormalSmall)
+    end
+    if tooltip then
+        cb:SetScript("OnEnter", function()
+            GameTooltip:SetOwner(cb, "ANCHOR_RIGHT")
+            GameTooltip:SetText(tooltip, 1, 1, 1, 1, 1)
+        end)
+        cb:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
+    return cb
+end
+
+-- Creates a section header with a horizontal rule and label.
+local function MakeSectionHeader(parent, text, width)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetWidth(width or 380)
+    f:SetHeight(20)
+
+    local lbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    lbl:SetPoint("LEFT", f, "LEFT", 0, 0)
+    lbl:SetText(text)
+    lbl:SetTextColor(1, 0.82, 0)
+
+    local line = f:CreateTexture(nil, "ARTWORK")
+    line:SetHeight(1)
+    line:SetPoint("LEFT", lbl, "RIGHT", 6, 0)
+    line:SetPoint("RIGHT", f, "RIGHT", 0, 0)
+    line:SetTexture(1, 0.82, 0, 0.4)
+
+    return f
+end
+
+-- Adds a tooltip to any frame on hover.
+local function AddTooltip(frame, text)
+    frame:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+        GameTooltip:SetText(text, 1, 1, 1, 1, 1)
+    end)
+    frame:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 end
 
 -------------------------------------------------------------------------------
@@ -280,7 +338,11 @@ do
     local y = -10
     local lx = 10
 
-    -- Spec override button
+    -- == Specialization ==
+    local specHeader = MakeSectionHeader(genPanel, "Specialization", contentW - 20)
+    specHeader:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
+    y = y - 24
+
     local specOverrideLabel = genPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     specOverrideLabel:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
     specOverrideLabel:SetText("Spec Override:")
@@ -302,13 +364,17 @@ do
     specBtn:SetText("Auto-Detect")
     specBtn:SetPoint("LEFT", specOverrideLabel, "RIGHT", 10, 0)
 
-    y = y - 44
+    y = y - 34
 
-    -- Sliders
+    -- == Layout ==
+    local layoutHeader = MakeSectionHeader(genPanel, "Layout", contentW - 20)
+    layoutHeader:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
+    y = y - 24
+
     local sliderDefs = {
-        { key="iconSize", label="Icon Size",  min=24, max=96,  step=1,  low="24",  high="96" },
-        { key="iconGap",  label="Icon Gap",   min=0,  max=20,  step=1,  low="0",   high="20" },
-        { key="rowGap",   label="Row Gap",    min=0,  max=20,  step=1,  low="0",   high="20" },
+        { key="iconSize", label="Icon Size",  min=24, max=96,  step=1,  low="24",  high="96",  tip="Size of each cooldown icon in pixels" },
+        { key="iconGap",  label="Icon Gap",   min=0,  max=20,  step=1,  low="0",   high="20",  tip="Horizontal spacing between icons" },
+        { key="rowGap",   label="Row Gap",    min=0,  max=20,  step=1,  low="0",   high="20",  tip="Vertical spacing between rows" },
     }
 
     for si, def in ipairs(sliderDefs) do
@@ -316,6 +382,7 @@ do
         local s = MakeSlider(genPanel, sname, 200, def.min, def.max, def.step,
                              def.label, def.low, def.high)
         s:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx + 10, y)
+        if def.tip then s.tooltipText = def.tip end
         y = y - 46
 
         local key = def.key
@@ -332,7 +399,11 @@ do
         genSliders[def.key] = s
     end
 
-    -- Per-row scale sliders
+    -- == Row Scaling ==
+    local rowHeader = MakeSectionHeader(genPanel, "Row Scaling", contentW - 20)
+    rowHeader:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
+    y = y - 24
+
     local rowDefs = {
         { row=1, label="Row 1 Scale (%)", min=25, max=150, step=5, low="25", high="150" },
         { row=2, label="Row 2 Scale (%)", min=25, max=150, step=5, low="25", high="150" },
@@ -368,32 +439,30 @@ do
 
     y = y - 10
 
-    -- Lock Position button
-    local lockBtn = MakeButton(genPanel, 130, 22, "Lock Position: OFF")
+    -- == Options ==
+    local optHeader = MakeSectionHeader(genPanel, "Options", contentW - 20)
+    optHeader:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
+    y = y - 24
+
+    -- Lock Position checkbox
+    local lockBtn = MakeCheckbox(genPanel, "Lock Position", "Prevent the HUD from being dragged")
     lockBtn:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
     lockBtn:SetScript("OnClick", function()
-        CH.db.locked = not CH.db.locked
+        CH.db.locked = (lockBtn:GetChecked() == 1)
         if CH.db.locked then
-            lockBtn:SetText("Lock Position: ON")
             CH:SetDragEnabled(false)
         else
-            lockBtn:SetText("Lock Position: OFF")
             if CH.testMode then
                 CH:SetDragEnabled(true)
             end
         end
     end)
 
-    -- Test Mode button
-    local testBtn = MakeButton(genPanel, 130, 22, "Test Mode: OFF")
-    testBtn:SetPoint("LEFT", lockBtn, "RIGHT", 10, 0)
+    -- Test Mode checkbox
+    local testBtn = MakeCheckbox(genPanel, "Test Mode", "Show all icons with dummy cooldowns for positioning")
+    testBtn:SetPoint("LEFT", lockBtn, "RIGHT", 100, 0)
     testBtn:SetScript("OnClick", function()
-        CH.testMode = not CH.testMode
-        if CH.testMode then
-            testBtn:SetText("Test Mode: ON")
-        else
-            testBtn:SetText("Test Mode: OFF")
-        end
+        CH.testMode = (testBtn:GetChecked() == 1)
         CH:FireEvent("TEST_MODE_CHANGED", CH.testMode)
     end)
 
@@ -402,6 +471,7 @@ do
     -- Reset to Preset button
     local resetBtn = MakeButton(genPanel, 140, 22, "Reset to Preset")
     resetBtn:SetPoint("TOPLEFT", genPanel, "TOPLEFT", lx, y)
+    AddTooltip(resetBtn, "Reset layout settings to the default preset values")
     resetBtn:SetScript("OnClick", function()
         CH:FireEvent("RESET_PRESET")
         CH:RefreshGeneralTab()
@@ -459,17 +529,9 @@ function CH:RefreshGeneralTab()
         end
     end
 
-    -- Lock/Test buttons
-    if db.locked then
-        genPanel.lockBtn:SetText("Lock Position: ON")
-    else
-        genPanel.lockBtn:SetText("Lock Position: OFF")
-    end
-    if CH.testMode then
-        genPanel.testBtn:SetText("Test Mode: ON")
-    else
-        genPanel.testBtn:SetText("Test Mode: OFF")
-    end
+    -- Lock/Test checkboxes
+    genPanel.lockBtn:SetChecked(db.locked)
+    genPanel.testBtn:SetChecked(CH.testMode)
 end
 
 -------------------------------------------------------------------------------
@@ -489,9 +551,186 @@ spellContent:SetHeight(1)
 spellScroll:SetScrollChild(spellContent)
 EnableScrollWheel(spellScroll)
 
+-- ---- Drag-and-Drop support ----
+-- Drag state
+local dragSpellName = nil      -- spell currently being dragged
+local dragSrcRow    = nil      -- source row index
+local dragSrcIdx    = nil      -- source spell index within row
+local dragStartX, dragStartY = 0, 0
+local dragActive    = false    -- true once mouse moved enough to start drag
+
+-- Drag overlay (follows cursor, shows icon + name)
+local dragOverlay = CreateFrame("Frame", nil, UIParent)
+dragOverlay:SetWidth(180)
+dragOverlay:SetHeight(24)
+dragOverlay:SetFrameStrata("TOOLTIP")
+dragOverlay:SetBackdrop({
+    bgFile   = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile     = true, tileSize = 16, edgeSize = 8,
+    insets   = { left = 2, right = 2, top = 2, bottom = 2 },
+})
+dragOverlay:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+dragOverlay:EnableMouse(false)
+dragOverlay:Hide()
+
+local dragIcon = dragOverlay:CreateTexture(nil, "ARTWORK")
+dragIcon:SetWidth(18)
+dragIcon:SetHeight(18)
+dragIcon:SetPoint("LEFT", dragOverlay, "LEFT", 4, 0)
+
+local dragLabel = dragOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+dragLabel:SetPoint("LEFT", dragIcon, "RIGHT", 4, 0)
+dragLabel:SetJustifyH("LEFT")
+
+-- Drop indicator line (shows insertion point)
+local dropIndicator = CreateFrame("Frame", nil, spellContent)
+dropIndicator:SetWidth(contentW - 30)
+dropIndicator:SetHeight(2)
+dropIndicator:SetFrameStrata("FULLSCREEN")
+local dropTex = dropIndicator:CreateTexture(nil, "OVERLAY")
+dropTex:SetAllPoints(dropIndicator)
+dropTex:SetTexture(1, 0.82, 0, 0.8)
+dropIndicator:Hide()
+
+-- Tracking: each entry stores its position info for drop targeting
+local spellEntryPositions = {}  -- { {rowIdx, spellIdx, top, bottom, frame}, ... }
+
+-- Find drop target based on cursor Y relative to spellContent
+local function FindDropTarget(cursorY)
+    -- Convert cursor screen Y to spellContent-relative Y
+    local _, contentTop = spellContent:GetCenter()
+    local contentH = spellContent:GetHeight()
+    local contentTopY = contentTop + contentH / 2
+    local relY = contentTopY - cursorY + spellScroll:GetVerticalScroll()
+
+    local bestRow, bestIdx = 1, 1
+    local bestDist = 99999
+
+    for _, ep in ipairs(spellEntryPositions) do
+        -- Check distance to top edge (insert before)
+        local distTop = math.abs(relY - ep.top)
+        if distTop < bestDist then
+            bestDist = distTop
+            bestRow = ep.rowIdx
+            bestIdx = ep.spellIdx
+        end
+        -- Check distance to bottom edge (insert after)
+        local distBot = math.abs(relY - ep.bottom)
+        if distBot < bestDist then
+            bestDist = distBot
+            bestRow = ep.rowIdx
+            bestIdx = ep.spellIdx + 1
+        end
+    end
+
+    return bestRow, bestIdx
+end
+
+-- OnUpdate during drag
+local function DragOnUpdate()
+    if not dragSpellName then return end
+
+    local curX, curY = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    curX = curX / scale
+    curY = curY / scale
+
+    -- Start dragging only after moving 5px (prevents accidental drags)
+    if not dragActive then
+        local dx = curX - dragStartX
+        local dy = curY - dragStartY
+        if (dx * dx + dy * dy) < 25 then return end
+        dragActive = true
+        dragOverlay:Show()
+    end
+
+    -- Move overlay to cursor
+    dragOverlay:ClearAllPoints()
+    dragOverlay:SetPoint("CENTER", UIParent, "BOTTOMLEFT", curX + 20, curY - 10)
+
+    -- Update drop indicator position
+    local targetRow, targetIdx = FindDropTarget(curY)
+    if targetRow and targetIdx then
+        -- Find the Y position for the indicator
+        for _, ep in ipairs(spellEntryPositions) do
+            if ep.rowIdx == targetRow then
+                if ep.spellIdx == targetIdx then
+                    -- Insert before this entry
+                    dropIndicator:ClearAllPoints()
+                    dropIndicator:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 10, -ep.top + 1)
+                    dropIndicator:Show()
+                    return
+                elseif ep.spellIdx == targetIdx - 1 then
+                    -- Insert after this entry
+                    dropIndicator:ClearAllPoints()
+                    dropIndicator:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 10, -ep.bottom - 1)
+                    dropIndicator:Show()
+                    return
+                end
+            end
+        end
+    end
+    dropIndicator:Hide()
+end
+
+local function StopDrag()
+    dragOverlay:Hide()
+    dropIndicator:Hide()
+    spellScroll:SetScript("OnUpdate", nil)
+
+    if dragActive and dragSpellName then
+        local curX, curY = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        curY = curY / scale
+
+        local targetRow, targetIdx = FindDropTarget(curY)
+        if targetRow and targetIdx and dragSrcRow then
+            -- Remove from source
+            local srcSpells = CH.rowData[dragSrcRow].spells
+            local newSrc = {}
+            for _, sn in ipairs(srcSpells) do
+                if sn ~= dragSpellName then
+                    table.insert(newSrc, sn)
+                end
+            end
+            CH.rowData[dragSrcRow].spells = newSrc
+
+            -- Adjust target index if same row and moving down
+            if targetRow == dragSrcRow and targetIdx > dragSrcIdx then
+                targetIdx = targetIdx - 1
+            end
+
+            -- Insert at target
+            local dstSpells = CH.rowData[targetRow].spells
+            if targetIdx > table.getn(dstSpells) + 1 then
+                targetIdx = table.getn(dstSpells) + 1
+            end
+            if targetIdx < 1 then targetIdx = 1 end
+            table.insert(dstSpells, targetIdx, dragSpellName)
+
+            CH:SaveRowOverrides()
+            CH:ApplyLayout()
+            CH:RefreshSpellsTab()
+        end
+    end
+
+    dragSpellName = nil
+    dragSrcRow = nil
+    dragSrcIdx = nil
+    dragActive = false
+end
+
+-- Catch mouseup on the content/scroll area for drag drops on empty space
+spellContent:EnableMouse(true)
+spellContent:SetScript("OnMouseUp", function()
+    if dragSpellName then StopDrag() end
+end)
+
 -- "+ Add Spell" button at bottom of spells panel
 local addSpellBtn = MakeButton(spellsPanel, 110, 22, "+ Add Spell")
 addSpellBtn:SetPoint("BOTTOMLEFT", spellsPanel, "BOTTOMLEFT", 4, 4)
+AddTooltip(addSpellBtn, "Browse and add spells to track")
 addSpellBtn:SetScript("OnClick", function()
     CH:FireEvent("OPEN_SPELL_BROWSER")
 end)
@@ -506,47 +745,38 @@ local function ClearSpellRows()
     spellRows = {}
 end
 
-local function GetRowLabel(rowIdx)
-    return "R" .. rowIdx
-end
-
 -- Rebuild the spells scroll content from CH.rowData
 function CH:RefreshSpellsTab()
     ClearSpellRows()
+    spellEntryPositions = {}
 
     local rowData = CH.rowData or {}
     local y       = 0
+
+    -- Drag instructions
+    local helpLbl = spellContent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    helpLbl:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 4, 0)
+    helpLbl:SetTextColor(0.6, 0.6, 0.6)
+    helpLbl:SetText("Drag spells to reorder or move between rows.")
+    local helpFr = CreateFrame("Frame", nil, spellContent)
+    helpFr:SetWidth(contentW)
+    helpFr:SetHeight(16)
+    helpFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 0, 0)
+    table.insert(spellRows, helpFr)
+    y = y + 18
 
     for rowIdx = 1, table.getn(rowData) do
         local row    = rowData[rowIdx]
         local spells = row.spells or {}
 
-        -- Separator line above row header (skip first row)
-        if rowIdx > 1 then
-            local sep = CreateFrame("Frame", nil, spellContent)
-            sep:SetWidth(contentW - 20)
-            sep:SetHeight(1)
-            sep:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 10, -y)
-            local sepTex = sep:CreateTexture(nil, "BACKGROUND")
-            sepTex:SetAllPoints(sep)
-            sepTex:SetTexture(0.4, 0.4, 0.4, 0.5)
-            table.insert(spellRows, sep)
-            y = y + 6
-        end
-
-        -- Row header label
-        local headerH  = 20
-        local headerFr = CreateFrame("Frame", nil, spellContent)
-        headerFr:SetWidth(contentW - 10)
-        headerFr:SetHeight(headerH)
-        headerFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 0, -y)
-
-        local hLabel = headerFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        hLabel:SetPoint("LEFT", headerFr, "LEFT", 4, 0)
-        hLabel:SetText("|cffffff00Row " .. rowIdx .. "|r  |cff888888Scale: " .. (row.scale or 100) .. "%|r")
-
+        -- Row section header
+        if rowIdx > 1 then y = y + 6 end
+        local headerFr = MakeSectionHeader(spellContent,
+            "Row " .. rowIdx .. "  |cff888888Scale: " .. (row.scale or 100) .. "%|r",
+            contentW - 10)
+        headerFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 4, -y)
         table.insert(spellRows, headerFr)
-        y = y + headerH + 2
+        y = y + 22
 
         for spellIdx = 1, table.getn(spells) do
             local spellName = spells[spellIdx]
@@ -555,12 +785,18 @@ function CH:RefreshSpellsTab()
             entryFr:SetWidth(contentW - 10)
             entryFr:SetHeight(entryH)
             entryFr:SetPoint("TOPLEFT", spellContent, "TOPLEFT", 0, -y)
+            entryFr:EnableMouse(true)
+
+            -- Drag handle icon (grip dots)
+            local grip = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            grip:SetPoint("LEFT", entryFr, "LEFT", 4, 0)
+            grip:SetText("|cff666666:::|r")
 
             -- Icon thumbnail
             local iconTex = entryFr:CreateTexture(nil, "ARTWORK")
             iconTex:SetWidth(18)
             iconTex:SetHeight(18)
-            iconTex:SetPoint("LEFT", entryFr, "LEFT", 4, 0)
+            iconTex:SetPoint("LEFT", grip, "RIGHT", 4, 0)
             local iconPath = CH:GetSpellIcon(spellName)
             if iconPath then
                 iconTex:SetTexture(iconPath)
@@ -571,95 +807,60 @@ function CH:RefreshSpellsTab()
             -- Spell name label
             local nameLabel = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             nameLabel:SetPoint("LEFT", iconTex, "RIGHT", 4, 0)
-            nameLabel:SetWidth(130)
+            nameLabel:SetWidth(150)
             nameLabel:SetJustifyH("LEFT")
-            nameLabel:SetText(spellName)
+            nameLabel:SetText(CH:GetSpellDisplayName(spellName))
 
-            -- Row assignment dropdown
+            -- Highlight on hover
+            local hoverTex = entryFr:CreateTexture(nil, "HIGHLIGHT")
+            hoverTex:SetAllPoints(entryFr)
+            hoverTex:SetTexture(1, 1, 1, 0.08)
+
+            -- Drag tooltip
+            entryFr:SetScript("OnEnter", function()
+                GameTooltip:SetOwner(entryFr, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Drag to reorder or move between rows", 1, 1, 1, 1, 1)
+            end)
+            entryFr:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+
+            -- Drag handlers
             local closureSpellName = spellName
             local closureRowIdx = rowIdx
-            local rowBtn = MakeDropdown(entryFr, 42, 18,
-                function()
-                    local out = {}
-                    for ri = 1, table.getn(CH.rowData) do
-                        table.insert(out, { label = "R" .. ri, value = ri })
-                    end
-                    return out
-                end,
-                function(targetRow)
-                    -- Remove from current row
-                    local curRow = nil
-                    for ri, rd in ipairs(CH.rowData) do
-                        for _, sn in ipairs(rd.spells) do
-                            if sn == closureSpellName then curRow = ri; break end
-                        end
-                        if curRow then break end
-                    end
-                    if not curRow or curRow == targetRow then return end
-                    local newOld = {}
-                    for _, sn in ipairs(CH.rowData[curRow].spells) do
-                        if sn ~= closureSpellName then table.insert(newOld, sn) end
-                    end
-                    CH.rowData[curRow].spells = newOld
-                    table.insert(CH.rowData[targetRow].spells, closureSpellName)
-                    CH:SaveRowOverrides()
-                    CH:ApplyLayout()
-                    CH:RefreshSpellsTab()
+            local closureSpellIdx = spellIdx
+            entryFr:SetScript("OnMouseDown", function()
+                if arg1 == "LeftButton" then
+                    dragSpellName = closureSpellName
+                    dragSrcRow = closureRowIdx
+                    dragSrcIdx = closureSpellIdx
+                    dragActive = false
+                    local cx, cy = GetCursorPosition()
+                    local s = UIParent:GetEffectiveScale()
+                    dragStartX = cx / s
+                    dragStartY = cy / s
+                    -- Set up overlay
+                    local tex = CH:GetSpellIcon(closureSpellName)
+                    dragIcon:SetTexture(tex or "Interface\\Icons\\INV_Misc_QuestionMark")
+                    dragLabel:SetText(closureSpellName)
+                    spellScroll:SetScript("OnUpdate", DragOnUpdate)
                 end
-            )
-            rowBtn:SetText(GetRowLabel(rowIdx))
-            rowBtn:SetPoint("LEFT", nameLabel, "RIGHT", 6, 0)
-
-            -- Up button
-            local upBtn = MakeButton(entryFr, 24, 18, "^")
-            upBtn:SetPoint("LEFT", rowBtn, "RIGHT", 4, 0)
-            upBtn:SetScript("OnClick", function()
-                local curRow, curIdx = nil, nil
-                for ri, rd in ipairs(CH.rowData) do
-                    for si, sn in ipairs(rd.spells) do
-                        if sn == closureSpellName then
-                            curRow = ri; curIdx = si; break
-                        end
-                    end
-                    if curRow then break end
-                end
-                if not curRow or curIdx <= 1 then return end
-                local spellList = CH.rowData[curRow].spells
-                local tmp = spellList[curIdx - 1]
-                spellList[curIdx - 1] = spellList[curIdx]
-                spellList[curIdx]     = tmp
-                CH:SaveRowOverrides()
-                CH:ApplyLayout()
-                CH:RefreshSpellsTab()
+            end)
+            entryFr:SetScript("OnMouseUp", function()
+                if dragSpellName then StopDrag() end
             end)
 
-            -- Down button
-            local dnBtn = MakeButton(entryFr, 24, 18, "v")
-            dnBtn:SetPoint("LEFT", upBtn, "RIGHT", 2, 0)
-            dnBtn:SetScript("OnClick", function()
-                local curRow, curIdx = nil, nil
-                for ri, rd in ipairs(CH.rowData) do
-                    for si, sn in ipairs(rd.spells) do
-                        if sn == closureSpellName then
-                            curRow = ri; curIdx = si; break
-                        end
-                    end
-                    if curRow then break end
-                end
-                if not curRow then return end
-                local spellList = CH.rowData[curRow].spells
-                if curIdx >= table.getn(spellList) then return end
-                local tmp = spellList[curIdx + 1]
-                spellList[curIdx + 1] = spellList[curIdx]
-                spellList[curIdx]     = tmp
-                CH:SaveRowOverrides()
-                CH:ApplyLayout()
-                CH:RefreshSpellsTab()
-            end)
+            -- Track entry positions for drop targeting
+            table.insert(spellEntryPositions, {
+                rowIdx = rowIdx,
+                spellIdx = spellIdx,
+                top = y,
+                bottom = y + entryH,
+            })
 
             -- X (remove) button
             local xBtn = MakeButton(entryFr, 22, 18, "X")
-            xBtn:SetPoint("LEFT", dnBtn, "RIGHT", 2, 0)
+            xBtn:SetPoint("RIGHT", entryFr, "RIGHT", -4, 0)
             xBtn:SetScript("OnClick", function()
                 local curRow = nil
                 for ri, rd in ipairs(CH.rowData) do
@@ -726,6 +927,7 @@ EnableScrollWheel(rulesScroll)
 -- "+ New Rule" button
 local addRuleBtn = MakeButton(rulesPanel, 110, 22, "+ New Rule")
 addRuleBtn:SetPoint("BOTTOMLEFT", rulesPanel, "BOTTOMLEFT", 4, 4)
+AddTooltip(addRuleBtn, "Create a custom rule with conditions and actions")
 addRuleBtn:SetScript("OnClick", function()
     CH:FireEvent("OPEN_RULE_EDITOR")
 end)
@@ -832,17 +1034,10 @@ function CH:RefreshRulesTab()
     end
 
     if table.getn(presetRules) > 0 then
-        -- Section header
-        local hFr = CreateFrame("Frame", nil, rulesContent)
-        hFr:SetWidth(contentW - 10)
-        hFr:SetHeight(18)
-        hFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 0, -y)
-        local hLbl = hFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hLbl:SetPoint("LEFT", hFr, "LEFT", 4, 0)
-        hLbl:SetText("Preset Rules")
-        hLbl:SetTextColor(0.8, 0.8, 0.2, 1)
+        local hFr = MakeSectionHeader(rulesContent, "Preset Rules", contentW - 10)
+        hFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 4, -y)
         table.insert(ruleRows, hFr)
-        y = y + 20
+        y = y + 24
 
         local disabled = CH.db.disabledPresetRules or {}
 
@@ -860,20 +1055,22 @@ function CH:RefreshRulesTab()
             entryFr:SetHeight(entryH)
             entryFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 0, -y)
 
-            -- Toggle button
-            local togBtn = MakeButton(entryFr, 50, 18, enabled and "ON" or "OFF")
+            -- Toggle checkbox
+            local togBtn = MakeCheckbox(entryFr, nil, "Enable or disable this rule")
             togBtn:SetPoint("TOPLEFT", entryFr, "TOPLEFT", 4, -2)
+            togBtn:SetChecked(enabled)
             local closureKey = key
+            local closureNameLbl  -- forward ref for color update
             togBtn:SetScript("OnClick", function()
                 if not CH.db.disabledPresetRules then
                     CH.db.disabledPresetRules = {}
                 end
                 if CH.db.disabledPresetRules[closureKey] then
                     CH.db.disabledPresetRules[closureKey] = nil
-                    togBtn:SetText("ON")
+                    if closureNameLbl then closureNameLbl:SetTextColor(1, 0.82, 0, 1) end
                 else
                     CH.db.disabledPresetRules[closureKey] = true
-                    togBtn:SetText("OFF")
+                    if closureNameLbl then closureNameLbl:SetTextColor(0.5, 0.5, 0.5, 1) end
                 end
                 CH:InvalidateRulesCache()
             end)
@@ -897,7 +1094,8 @@ function CH:RefreshRulesTab()
             -- Spell name (top line)
             local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             nameLbl:SetPoint("LEFT", togBtn, "RIGHT", 6, 0)
-            nameLbl:SetText(rule.spell)
+            nameLbl:SetText(CH:GetSpellDisplayName(rule.spell))
+            closureNameLbl = nameLbl
             if not enabled then
                 nameLbl:SetTextColor(0.5, 0.5, 0.5, 1)
             else
@@ -912,8 +1110,14 @@ function CH:RefreshRulesTab()
             condLbl:SetText("|cffffff00" .. ActionsLabel(rule) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
+            -- Resize entry to fit wrapped text
+            local textH = condLbl:GetHeight() or 12
+            local totalH = 22 + textH + 6  -- name line + desc + padding
+            if totalH < entryH then totalH = entryH end
+            entryFr:SetHeight(totalH)
+
             table.insert(ruleRows, entryFr)
-            y = y + entryH + 4
+            y = y + totalH + 4
         end
     end
 
@@ -922,17 +1126,10 @@ function CH:RefreshRulesTab()
 
     if table.getn(customRules) > 0 then
         y = y + 6
-        -- Section header
-        local hFr = CreateFrame("Frame", nil, rulesContent)
-        hFr:SetWidth(contentW - 10)
-        hFr:SetHeight(18)
-        hFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 0, -y)
-        local hLbl = hFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hLbl:SetPoint("LEFT", hFr, "LEFT", 4, 0)
-        hLbl:SetText("Custom Rules")
-        hLbl:SetTextColor(0.8, 0.8, 0.2, 1)
+        local hFr = MakeSectionHeader(rulesContent, "Custom Rules", contentW - 10)
+        hFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 4, -y)
         table.insert(ruleRows, hFr)
-        y = y + 20
+        y = y + 24
 
         for ci, rule in ipairs(customRules) do
             local entryH  = 38
@@ -967,7 +1164,7 @@ function CH:RefreshRulesTab()
             -- Spell name (top line)
             local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             nameLbl:SetPoint("TOPLEFT", entryFr, "TOPLEFT", 4, -2)
-            nameLbl:SetText(rule.spell or "?")
+            nameLbl:SetText(CH:GetSpellDisplayName(rule.spell or "?"))
             nameLbl:SetTextColor(0.5, 0.8, 1, 1)
 
             -- Condition description (second line)
@@ -978,8 +1175,14 @@ function CH:RefreshRulesTab()
             condLbl:SetText("|cffffff00" .. ActionsLabel(rule) .. "|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
+            -- Resize entry to fit wrapped text
+            local textH = condLbl:GetHeight() or 12
+            local totalH = 22 + textH + 6
+            if totalH < entryH then totalH = entryH end
+            entryFr:SetHeight(totalH)
+
             table.insert(ruleRows, entryFr)
-            y = y + entryH + 4
+            y = y + totalH + 4
         end
     end
 
@@ -1113,7 +1316,8 @@ local function RefreshSpellBrowser()
 
     for _, spellName in ipairs(allSpells) do
         -- Apply search filter
-        if searchText ~= "" and not string.find(string.lower(spellName), searchText, 1, true) then
+        local displayName = CH:GetSpellDisplayName(spellName)
+        if searchText ~= "" and not string.find(string.lower(displayName), searchText, 1, true) then
             -- skip: doesn't match search
         elseif not tracked[spellName] then
             local entryH  = 24
@@ -1139,7 +1343,7 @@ local function RefreshSpellBrowser()
             nameLbl:SetPoint("LEFT", iconTex, "RIGHT", 4, 0)
             nameLbl:SetWidth(160)
             nameLbl:SetJustifyH("LEFT")
-            nameLbl:SetText(spellName)
+            nameLbl:SetText(displayName)
 
             -- "+" button
             local addBtn = MakeButton(entryFr, 24, 18, "+")
@@ -1199,7 +1403,7 @@ end)
 
 local ruleEditor = CreateFrame("Frame", "CooldownHUD_RuleEditor", UIParent)
 ruleEditor:SetWidth(340)
-ruleEditor:SetHeight(340)
+ruleEditor:SetHeight(400)
 ruleEditor:SetFrameStrata("FULLSCREEN")
 ruleEditor:SetMovable(true)
 ruleEditor:SetClampedToScreen(true)
@@ -1229,6 +1433,25 @@ reSpellLabel:SetText("Spell:")
 local reSpellIndex  = 1
 local reSpellNames  = {}
 
+-- Spell icon preview
+local reSpellIcon = ruleEditor:CreateTexture(nil, "ARTWORK")
+reSpellIcon:SetWidth(22)
+reSpellIcon:SetHeight(22)
+reSpellIcon:SetPoint("LEFT", reSpellLabel, "RIGHT", 8, 0)
+reSpellIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+
+local function UpdateReSpellIcon()
+    local name = reSpellNames[reSpellIndex]
+    if name then
+        local tex = CH:GetSpellIcon(name)
+        if tex then
+            reSpellIcon:SetTexture(tex)
+            return
+        end
+    end
+    reSpellIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+end
+
 local reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
     function()
         local out = {}
@@ -1241,57 +1464,54 @@ local reSpellBtn = MakeDropdown(ruleEditor, 200, 22,
     function(val)
         reSpellIndex = val
         reSpellBtn:SetText(reSpellNames[val] or "")
+        UpdateReSpellIcon()
     end
 )
-reSpellBtn:SetPoint("LEFT", reSpellLabel, "RIGHT", 8, 0)
+reSpellBtn:SetPoint("LEFT", reSpellIcon, "RIGHT", 6, 0)
 
--- ---- Action Selector (multi-select toggle buttons) ----
+-- ---- Action Selector (checkboxes) ----
 local reActionLabel = ruleEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 reActionLabel:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -68)
 reActionLabel:SetText("Actions:")
 
 local reSelectedActions = {}  -- actionId -> true/false
-local reActionToggles = {}    -- actionId -> button
+local reActionChecks = {}     -- actionId -> CheckButton
 
-local function UpdateActionToggleAppearance()
-    for _, a in ipairs(CH.ruleActions) do
-        local btn = reActionToggles[a.id]
-        if btn then
-            if reSelectedActions[a.id] then
-                btn:SetText("|cffffff00" .. a.label .. "|r")
-            else
-                btn:SetText("|cff666666" .. a.label .. "|r")
-            end
-        end
-    end
-end
-
-local actionBtnY = -68
-for ai = 1, table.getn(CH.ruleActions) do
+local numActions = table.getn(CH.ruleActions)
+for ai = 1, numActions do
     local a = CH.ruleActions[ai]
-    local togBtn = MakeButton(ruleEditor, 150, 18, a.label)
-    togBtn:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 70 + (math.mod(ai - 1, 2)) * 140, actionBtnY)
-    if ai == 3 then actionBtnY = actionBtnY - 22 end
+    local cb = MakeCheckbox(ruleEditor, a.label, a.desc)
+    -- Layout: 2 columns, rows stacked
+    local col = math.mod(ai - 1, 2)
+    local row = math.floor((ai - 1) / 2)
+    cb:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14 + col * 160, -88 - row * 24)
 
     local closureId = a.id
-    togBtn:SetScript("OnClick", function()
-        reSelectedActions[closureId] = not reSelectedActions[closureId]
-        UpdateActionToggleAppearance()
+    cb:SetScript("OnClick", function()
+        reSelectedActions[closureId] = (cb:GetChecked() == 1)
     end)
+    reActionChecks[a.id] = cb
+end
 
-    reActionToggles[a.id] = togBtn
-    if math.mod(ai, 2) == 0 then
-        actionBtnY = actionBtnY - 22
+local function UpdateActionCheckboxes()
+    for ai = 1, numActions do
+        local a = CH.ruleActions[ai]
+        reActionChecks[a.id]:SetChecked(reSelectedActions[a.id])
     end
 end
 
 -- ---- Condition Rows ----
+local reCondHeader = MakeSectionHeader(ruleEditor, "Conditions", 310)
+reCondHeader:SetPoint("TOPLEFT", ruleEditor, "TOPLEFT", 14, -136)
+
 local NUM_CONDITIONS = 3
 local reCondTypes  = {}   -- current condition type index per condition row
 local reCondBoxes  = {}   -- EditBox per condition row
 local reCondBtns   = {}   -- type cycle button per condition row
 local reAndLabels  = {}   -- AND labels between rows
 local reVisibleConds = 1  -- how many condition rows are shown
+local reAddCondBtn           -- forward declaration (created after UpdateCondRowVisibility)
+local reRemoveBtns = {}      -- "X" remove buttons per condition row
 
 local function GetCondLabel(typeIdx)
     local ct = CH.conditionTypes[typeIdx]
@@ -1299,7 +1519,7 @@ local function GetCondLabel(typeIdx)
     return "(none)"
 end
 
-local condStartY = -120
+local condStartY = -154
 local condRowH   = 44
 
 for ci = 1, NUM_CONDITIONS do
@@ -1353,6 +1573,30 @@ for ci = 1, NUM_CONDITIONS do
     eb:Hide()
     reCondBoxes[ci] = eb
 
+    -- "X" remove button (only for rows 2+)
+    if ci > 1 then
+        local removeBtn = MakeButton(ruleEditor, 20, 20, "X")
+        removeBtn:SetPoint("LEFT", eb, "RIGHT", 6, 0)
+        removeBtn:Hide()
+        local closureRemoveCI = ci
+        removeBtn:SetScript("OnClick", function()
+            -- Shift conditions from closureRemoveCI+1..reVisibleConds down by one
+            for si = closureRemoveCI, reVisibleConds - 1 do
+                reCondTypes[si] = reCondTypes[si + 1]
+                reCondBtns[si]:SetText(reCondBtns[si + 1]:GetText())
+                reCondBoxes[si]:SetText(reCondBoxes[si + 1]:GetText())
+            end
+            -- Clear the last visible row
+            reCondTypes[reVisibleConds] = 0
+            reCondBtns[reVisibleConds]:SetText("(none)")
+            reCondBoxes[reVisibleConds]:SetText("")
+            reVisibleConds = reVisibleConds - 1
+            if reVisibleConds < 1 then reVisibleConds = 1 end
+            UpdateCondRowVisibility()
+        end)
+        reRemoveBtns[ci] = removeBtn
+    end
+
     -- Hide rows 2+ by default
     if ci > 1 then
         typeBtn:Hide()
@@ -1375,11 +1619,17 @@ local function UpdateCondRowVisibility()
             if ci > 1 and reAndLabels[ci] then
                 reAndLabels[ci]:Show()
             end
+            if ci > 1 and reRemoveBtns[ci] then
+                reRemoveBtns[ci]:Show()
+            end
         else
             reCondBtns[ci]:Hide()
             reCondBoxes[ci]:Hide()
             if reAndLabels[ci] then
                 reAndLabels[ci]:Hide()
+            end
+            if reRemoveBtns[ci] then
+                reRemoveBtns[ci]:Hide()
             end
         end
     end
@@ -1395,7 +1645,7 @@ local function UpdateCondRowVisibility()
 end
 
 -- "+ Add Condition" button
-local reAddCondBtn = MakeButton(ruleEditor, 120, 20, "+ Add Condition")
+reAddCondBtn = MakeButton(ruleEditor, 120, 20, "+ Add Condition")
 reAddCondBtn:SetScript("OnClick", function()
     if reVisibleConds < NUM_CONDITIONS then
         reVisibleConds = reVisibleConds + 1
@@ -1407,6 +1657,7 @@ end)
 local reSaveBtn = MakeButton(ruleEditor, 80, 22, "Save")
 reSaveBtn:SetPoint("BOTTOMRIGHT", ruleEditor, "BOTTOMRIGHT", -14, 14)
 reSaveBtn:SetScript("OnClick", function()
+    if activeDropdown then activeDropdown:Hide(); activeDropdown = nil end
     if table.getn(reSpellNames) == 0 then return end
     local spellName = reSpellNames[reSpellIndex]
     if not spellName or spellName == "" then return end
@@ -1473,6 +1724,7 @@ end)
 local reCancelBtn = MakeButton(ruleEditor, 80, 22, "Cancel")
 reCancelBtn:SetPoint("RIGHT", reSaveBtn, "LEFT", -8, 0)
 reCancelBtn:SetScript("OnClick", function()
+    if activeDropdown then activeDropdown:Hide(); activeDropdown = nil end
     reEditingRule = nil
     ruleEditor:Hide()
 end)
@@ -1497,6 +1749,7 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         else
             reSpellBtn:SetText(editSpell ~= "" and editSpell or "(no spells)")
         end
+        UpdateReSpellIcon()
         -- Pre-populate actions (multi-select)
         reSelectedActions = {}
         if reEditingRule.rule.actions then
@@ -1508,7 +1761,7 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         else
             reSelectedActions["glow"] = true
         end
-        UpdateActionToggleAppearance()
+        UpdateActionCheckboxes()
         -- Pre-populate conditions
         local editConds = reEditingRule.rule.conditions or {}
         local numEditConds = table.getn(editConds)
@@ -1544,9 +1797,10 @@ CH:RegisterEvent("OPEN_RULE_EDITOR", function()
         else
             reSpellBtn:SetText("(no spells)")
         end
+        UpdateReSpellIcon()
         -- Reset actions — default glow selected
         reSelectedActions = { glow = true }
-        UpdateActionToggleAppearance()
+        UpdateActionCheckboxes()
         -- Reset conditions — start with 1 visible row
         reVisibleConds = 1
         for ci = 1, NUM_CONDITIONS do

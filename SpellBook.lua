@@ -38,8 +38,17 @@ function CH:FindSpell(spellName)
     return self.spellCache[spellName]
 end
 
+-- Returns a user-friendly display name for special tracker spells.
+function CH:GetSpellDisplayName(spellName)
+    if spellName == "_SealTracker" then return "Seals" end
+    return spellName
+end
+
 -- Returns the spell icon texture path for spellName, or nil.
 function CH:GetSpellIcon(spellName)
+    if spellName == "_SealTracker" then
+        return "Interface\\Icons\\Spell_Holy_RighteousnessAura"
+    end
     local index = self:FindSpell(spellName)
     if not index then return nil end
     return GetSpellTexture(index, BOOKTYPE_SPELL)

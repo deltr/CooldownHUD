@@ -17,7 +17,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 scale = 55,
-                spells = { "_SealTracker", "Divine Shield", "Blessing of Freedom", "Blessing of Protection" },
+                spells = { "_SealTracker", "Divine Shield" },
             },
         },
         glowRules = {
@@ -51,7 +51,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 scale = 55,
-                spells = { "_SealTracker", "Divine Shield", "Blessing of Sacrifice", "Blessing of Protection", "Blessing of Freedom" },
+                spells = { "_SealTracker", "Divine Shield" },
             },
         },
         glowRules = {
@@ -84,33 +84,25 @@ CH.Presets["PALADIN"] = {
     Holy = {
         rows = {
             {
+                scale = 120,
+                spells = { "Hammer of Wrath" },
+            },
+            {
                 scale = 100,
-                spells = { "Holy Shock", "Hammer of Justice", "Consecration", "Exorcism" },
+                spells = { "_SealTracker", "Judgement", "Holy Strike", "Holy Shock" },
             },
             {
-                scale = 70,
-                spells = { "Holy Strike", "Cleanse", "Holy Wrath" },
-            },
-            {
-                scale = 55,
-                spells = { "_SealTracker", "Divine Shield", "Lay on Hands", "Blessing of Protection", "Blessing of Freedom" },
+                scale = 75,
+                spells = { "Hammer of Justice", "Divine Shield", "Lay on Hands", "Exorcism", "Consecration" },
             },
         },
         glowRules = {
             {
-                spell = "Holy Shock",
-                action = "glow",
+                spell = "Hammer of Wrath",
+                actions = { "glow", "showOnly" },
                 conditions = {
+                    { "targetHpBelow", 20 },
                     { "offCooldown" },
-                    { "inCombat" },
-                },
-            },
-            {
-                spell = "Lay on Hands",
-                action = "pulse",
-                conditions = {
-                    { "offCooldown" },
-                    { "playerHpBelow", 20 },
                 },
             },
         },

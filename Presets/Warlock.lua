@@ -11,7 +11,7 @@ CH.Presets["WARLOCK"] = {
             },
             {
                 scale = 70,
-                spells = { "Shadowburn", "Fel Domination", "Amplify Curse" },
+                spells = { "Shadowburn", "Fel Domination" },
             },
             {
                 scale = 55,

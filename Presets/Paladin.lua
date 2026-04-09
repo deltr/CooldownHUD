@@ -23,6 +23,7 @@ CH.Presets["PALADIN"] = {
         glowRules = {
             {
                 spell = "Hammer of Wrath",
+                action = "pulse",
                 conditions = {
                     { "offCooldown" },
                     { "targetHpBelow", 20 },
@@ -30,6 +31,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Crusader Strike",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "inCombat" },
@@ -37,6 +39,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Judgement",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "inCombat" },
@@ -62,6 +65,7 @@ CH.Presets["PALADIN"] = {
         glowRules = {
             {
                 spell = "Holy Shield",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "playerHasBuff", "Redoubt" },
@@ -69,6 +73,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Consecration",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "hasAttackableTarget" },
@@ -76,6 +81,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Avenger's Shield",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "inCombat" },
@@ -101,6 +107,7 @@ CH.Presets["PALADIN"] = {
         glowRules = {
             {
                 spell = "Holy Shock",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "inCombat" },
@@ -108,6 +115,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Divine Favor",
+                action = "glow",
                 conditions = {
                     { "offCooldown" },
                     { "playerManaBelow", 50 },
@@ -115,6 +123,7 @@ CH.Presets["PALADIN"] = {
             },
             {
                 spell = "Lay on Hands",
+                action = "pulse",
                 conditions = {
                     { "offCooldown" },
                     { "playerHpBelow", 20 },

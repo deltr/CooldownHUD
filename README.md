@@ -86,7 +86,19 @@ A modular cooldown tracking HUD addon for **TurtleWoW** (WoW 1.12 / Interface 11
 
 ## Class Support
 
-Currently includes presets for **Paladin** (Retribution, Protection, Holy). The addon is designed to support all classes - spells from any class can be added manually via the Spells tab.
+Includes presets for all 9 classes with spec-specific spell layouts and alert rules:
+
+- **Paladin** — Retribution, Protection, Holy (+ Seal Tracker)
+- **Druid** — Balance, Feral, Restoration
+- **Warrior** — Arms, Fury, Protection (+ TurtleWoW Spell Reflection)
+- **Mage** — Arcane, Fire, Frost
+- **Warlock** — Affliction, Demonology, Destruction (+ TurtleWoW Dark Harvest, Shadowfury)
+- **Priest** — Discipline, Holy, Shadow (+ TurtleWoW Pain Spike)
+- **Rogue** — Assassination, Combat, Subtlety (+ TurtleWoW Blade Flurry for all specs)
+- **Hunter** — Beast Mastery, Marksmanship, Survival (+ TurtleWoW Steady Shot)
+- **Shaman** — Elemental, Enhancement, Restoration (+ TurtleWoW Bloodlust, Spirit Link, Feral Spirit, Hex)
+
+Spells the player doesn't have (unlearned talents, wrong race) are automatically hidden.
 
 ## Requirements
 

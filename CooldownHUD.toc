@@ -7,6 +7,14 @@ Core.lua
 SpellBook.lua
 SpecDetector.lua
 Presets\Paladin.lua
+Presets\Druid.lua
+Presets\Warrior.lua
+Presets\Mage.lua
+Presets\Warlock.lua
+Presets\Priest.lua
+Presets\Rogue.lua
+Presets\Hunter.lua
+Presets\Shaman.lua
 CooldownTracker.lua
 ConditionEngine.lua
 IconFrame.lua

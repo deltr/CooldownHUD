@@ -13,7 +13,14 @@ local CH = CooldownHUD
 
 local TREE_NAMES = {
     PALADIN = { "Holy", "Protection", "Retribution" },
-    -- Additional classes can be added here when their presets are written.
+    DRUID   = { "Balance", "Feral", "Restoration" },
+    WARRIOR = { "Arms", "Fury", "Protection" },
+    MAGE    = { "Arcane", "Fire", "Frost" },
+    WARLOCK = { "Affliction", "Demonology", "Destruction" },
+    PRIEST  = { "Discipline", "Holy", "Shadow" },
+    ROGUE   = { "Assassination", "Combat", "Subtlety" },
+    HUNTER  = { "Beast Mastery", "Marksmanship", "Survival" },
+    SHAMAN  = { "Elemental", "Enhancement", "Restoration" },
 }
 
 -------------------------------------------------------------------------------

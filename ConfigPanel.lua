@@ -681,6 +681,24 @@ function CH:RefreshRulesTab()
 
     local y = 0
 
+    -- Explanation header
+    local explainFr = CreateFrame("Frame", nil, rulesContent)
+    explainFr:SetWidth(contentW - 10)
+    explainFr:SetHeight(48)
+    explainFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 0, -y)
+
+    local explainLbl = explainFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    explainLbl:SetPoint("TOPLEFT", explainFr, "TOPLEFT", 4, 0)
+    explainLbl:SetWidth(contentW - 20)
+    explainLbl:SetJustifyH("LEFT")
+    explainLbl:SetText(
+        "|cffffffffGlow Rules|r add a |cffffff00gold pulsing border|r to a spell icon "
+        .. "when ALL conditions are true. Use them to highlight the best "
+        .. "moment to cast a spell (e.g. synergy procs, execute range)."
+    )
+    table.insert(ruleRows, explainFr)
+    y = y + 52
+
     -- ---- Preset rules section ----
     local class = CH.playerClass
     local spec  = CH:GetActiveSpec()
@@ -717,7 +735,7 @@ function CH:RefreshRulesTab()
             local key     = rule.spell .. ":" .. firstCondType
             local enabled = not disabled[key]
 
-            local entryH  = 22
+            local entryH  = 38
             local entryFr = CreateFrame("Frame", nil, rulesContent)
             entryFr:SetWidth(contentW - 10)
             entryFr:SetHeight(entryH)
@@ -725,7 +743,7 @@ function CH:RefreshRulesTab()
 
             -- Toggle button
             local togBtn = MakeButton(entryFr, 50, 18, enabled and "ON" or "OFF")
-            togBtn:SetPoint("LEFT", entryFr, "LEFT", 4, 0)
+            togBtn:SetPoint("TOPLEFT", entryFr, "TOPLEFT", 4, -2)
             local closureKey = key
             togBtn:SetScript("OnClick", function()
                 if not CH.db.disabledPresetRules then
@@ -738,28 +756,29 @@ function CH:RefreshRulesTab()
                     CH.db.disabledPresetRules[closureKey] = true
                     togBtn:SetText("OFF")
                 end
+                CH:InvalidateRulesCache()
             end)
 
-            -- Spell name
-            local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            -- Spell name (top line)
+            local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             nameLbl:SetPoint("LEFT", togBtn, "RIGHT", 6, 0)
-            nameLbl:SetWidth(90)
-            nameLbl:SetJustifyH("LEFT")
             nameLbl:SetText(rule.spell)
             if not enabled then
                 nameLbl:SetTextColor(0.5, 0.5, 0.5, 1)
+            else
+                nameLbl:SetTextColor(1, 0.82, 0, 1)
             end
 
-            -- Condition summary
+            -- Condition description (second line)
             local condLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            condLbl:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
-            condLbl:SetWidth(170)
+            condLbl:SetPoint("TOPLEFT", togBtn, "BOTTOMLEFT", 56, -2)
+            condLbl:SetWidth(contentW - 70)
             condLbl:SetJustifyH("LEFT")
-            condLbl:SetText(ConditionSummary(rule.conditions))
+            condLbl:SetText("|cffffff00Gold glow|r when: " .. ConditionSummary(rule.conditions))
             condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
 
             table.insert(ruleRows, entryFr)
-            y = y + entryH + 2
+            y = y + entryH + 4
         end
     end
 
@@ -781,38 +800,38 @@ function CH:RefreshRulesTab()
         y = y + 20
 
         for ci, rule in ipairs(customRules) do
-            local entryH  = 22
+            local entryH  = 38
             local entryFr = CreateFrame("Frame", nil, rulesContent)
             entryFr:SetWidth(contentW - 10)
             entryFr:SetHeight(entryH)
             entryFr:SetPoint("TOPLEFT", rulesContent, "TOPLEFT", 0, -y)
 
-            -- Spell name
-            local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            nameLbl:SetPoint("LEFT", entryFr, "LEFT", 4, 0)
-            nameLbl:SetWidth(100)
-            nameLbl:SetJustifyH("LEFT")
-            nameLbl:SetText(rule.spell or "?")
-
-            -- Condition summary
-            local condLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            condLbl:SetPoint("LEFT", nameLbl, "RIGHT", 4, 0)
-            condLbl:SetWidth(200)
-            condLbl:SetJustifyH("LEFT")
-            condLbl:SetText(ConditionSummary(rule.conditions))
-            condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
-
-            -- Delete button
+            -- Delete button (top right)
             local delBtn = MakeButton(entryFr, 22, 18, "X")
-            delBtn:SetPoint("RIGHT", entryFr, "RIGHT", -4, 0)
+            delBtn:SetPoint("TOPRIGHT", entryFr, "TOPRIGHT", -4, -2)
             local closureIdx = ci
             delBtn:SetScript("OnClick", function()
                 table.remove(CH.db.customRules, closureIdx)
+                CH:InvalidateRulesCache()
                 CH:RefreshRulesTab()
             end)
 
+            -- Spell name (top line)
+            local nameLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            nameLbl:SetPoint("TOPLEFT", entryFr, "TOPLEFT", 4, -2)
+            nameLbl:SetText(rule.spell or "?")
+            nameLbl:SetTextColor(0.5, 0.8, 1, 1)
+
+            -- Condition description (second line)
+            local condLbl = entryFr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            condLbl:SetPoint("TOPLEFT", nameLbl, "BOTTOMLEFT", 0, -2)
+            condLbl:SetWidth(contentW - 40)
+            condLbl:SetJustifyH("LEFT")
+            condLbl:SetText("|cffffff00Gold glow|r when: " .. ConditionSummary(rule.conditions))
+            condLbl:SetTextColor(0.7, 0.7, 0.7, 1)
+
             table.insert(ruleRows, entryFr)
-            y = y + entryH + 2
+            y = y + entryH + 4
         end
     end
 

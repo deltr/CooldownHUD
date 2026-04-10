@@ -4,6 +4,16 @@ if not CH.Presets then
     CH.Presets = {}
 end
 
+-- Shared rule: Seal tracker glows + pulses when no seal is active and has target
+local sealAlertRule = {
+    spell = "_SealTracker",
+    actions = { "glow", "pulse" },
+    conditions = {
+        { "playerMissingSeal" },
+        { "hasAttackableTarget" },
+    },
+}
+
 CH.Presets["PALADIN"] = {
     Retribution = {
         rows = {
@@ -21,6 +31,7 @@ CH.Presets["PALADIN"] = {
             },
         },
         glowRules = {
+            sealAlertRule,
             {
                 spell = "Hammer of Wrath",
                 actions = { "glow", "pulse", "showOnly" },
@@ -55,6 +66,7 @@ CH.Presets["PALADIN"] = {
             },
         },
         glowRules = {
+            sealAlertRule,
             {
                 spell = "Holy Shield",
                 action = "glow",
@@ -97,6 +109,7 @@ CH.Presets["PALADIN"] = {
             },
         },
         glowRules = {
+            sealAlertRule,
             {
                 spell = "Hammer of Wrath",
                 actions = { "glow", "showOnly" },

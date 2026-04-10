@@ -172,7 +172,7 @@ local function IsSealTexture(texPath)
 end
 
 -- Exposed on CH so ConditionEngine can use it for seal-related conditions
-function CH:CH:GetActiveSeal()
+function CH:GetActiveSeal()
     local i = 1
     while true do
         local tex = UnitBuff("player", i)

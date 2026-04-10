@@ -234,12 +234,32 @@ function CH:UpdateSealTracker(fr)
         fr.texture:SetAlpha(alpha)
     end
 
-    -- Deactivate glow (not used for seal tracker)
-    if fr.glowActive then
+    -- Apply rule actions (glow, pulse) for seal tracker
+    local actions = CH:GetSpellActions("_SealTracker")
+
+    if actions["glow"] then
+        if not fr.glowActive then
+            fr.glowElapsed = 0
+            fr.glowActive  = true
+        end
+        for i = 1, 4 do
+            fr.glowEdges[i]:Show()
+        end
+    else
         fr.glowActive = false
         for i = 1, 4 do
             fr.glowEdges[i]:Hide()
         end
+    end
+
+    if actions["pulse"] and not sealTex then
+        if not fr.sealPulsing then
+            fr.sealPulsing = true
+            fr.sealPulseElapsed = 0
+        end
+        fr.sealPulseElapsed = (fr.sealPulseElapsed or 0) + 0.05
+        local a = 0.75 + 0.25 * math.sin(fr.sealPulseElapsed * 2 * math.pi * 1.5)
+        fr.texture:SetAlpha(a)
     end
 end
 

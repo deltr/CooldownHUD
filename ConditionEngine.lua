@@ -104,6 +104,16 @@ local Evaluators = {
         local ctype = UnitCreatureType("target")
         return ctype == "Undead"
     end,
+
+    playerHasSeal = function(spellName, param)
+        local tex = CH:GetActiveSeal()
+        return tex ~= nil
+    end,
+
+    playerMissingSeal = function(spellName, param)
+        local tex = CH:GetActiveSeal()
+        return tex == nil
+    end,
 }
 
 -------------------------------------------------------------------------------
@@ -326,6 +336,20 @@ CH.conditionTypes = {
         id       = "targetIsUndead",
         label    = "Target is undead",
         desc     = "True when your target is an Undead creature type",
+        hasParam = false,
+        paramType = nil,
+    },
+    {
+        id       = "playerHasSeal",
+        label    = "Player has any seal",
+        desc     = "True when you have any seal buff active (Paladin)",
+        hasParam = false,
+        paramType = nil,
+    },
+    {
+        id       = "playerMissingSeal",
+        label    = "Player missing seal",
+        desc     = "True when you have NO seal active (Paladin)",
         hasParam = false,
         paramType = nil,
     },

@@ -171,7 +171,8 @@ local function IsSealTexture(texPath)
     return false
 end
 
-local function GetActiveSeal()
+-- Exposed on CH so ConditionEngine can use it for seal-related conditions
+function CH:CH:GetActiveSeal()
     local i = 1
     while true do
         local tex = UnitBuff("player", i)
@@ -202,7 +203,7 @@ function CH:UpdateSealTracker(fr)
     fr:Show()
     fr:SetAlpha(1)
 
-    local sealTex, timeLeft = GetActiveSeal()
+    local sealTex, timeLeft = CH:GetActiveSeal()
 
     if sealTex then
         fr.texture:SetTexture(sealTex)
@@ -332,7 +333,7 @@ function CH:UpdateIconState(spellName)
 
     -- Greyscale Judgement when no seal is active (WoW 1.12: use SetVertexColor)
     if spellName == "Judgement" and not onCD then
-        local sealTex = GetActiveSeal()
+        local sealTex = CH:GetActiveSeal()
         if not sealTex then
             fr.texture:SetVertexColor(0.4, 0.4, 0.4)
             fr.desaturated = true

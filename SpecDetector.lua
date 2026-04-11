@@ -116,17 +116,108 @@ end
 -- Hook into the internal event bus
 -------------------------------------------------------------------------------
 
-CH:RegisterEvent("INIT", function()
-    CH:DetectSpec()
-    CH.activeSpec = CH:GetActiveSpec()
-end)
+-------------------------------------------------------------------------------
+-- Key-spell fallback detection
+-- When talent point counts are unreliable (e.g. right after respec), check
+-- for signature spells that are only available in specific specs.
+-------------------------------------------------------------------------------
 
-CH:RegisterEvent("TALENTS_CHANGED", function()
+local KEY_SPELLS = {
+    PALADIN = {
+        { spell = "Holy Shock",      spec = "Holy" },
+        { spell = "Holy Shield",     spec = "Protection" },
+        { spell = "Repentance",      spec = "Retribution" },
+        { spell = "Crusader Strike", spec = "Retribution" },
+        { spell = "Avenger's Shield", spec = "Protection" },
+    },
+    DRUID = {
+        { spell = "Swiftmend",         spec = "Restoration" },
+        { spell = "Nature's Swiftness", spec = "Restoration" },
+        { spell = "Feral Charge",      spec = "Feral" },
+    },
+    WARRIOR = {
+        { spell = "Mortal Strike",    spec = "Arms" },
+        { spell = "Bloodthirst",      spec = "Fury" },
+        { spell = "Shield Slam",      spec = "Protection" },
+    },
+    MAGE = {
+        { spell = "Arcane Power",     spec = "Arcane" },
+        { spell = "Presence of Mind", spec = "Arcane" },
+        { spell = "Combustion",       spec = "Fire" },
+        { spell = "Ice Barrier",      spec = "Frost" },
+    },
+    WARLOCK = {
+        { spell = "Dark Harvest",  spec = "Affliction" },
+        { spell = "Conflagrate",   spec = "Destruction" },
+        { spell = "Shadowfury",    spec = "Destruction" },
+        { spell = "Fel Domination", spec = "Demonology" },
+    },
+    PRIEST = {
+        { spell = "Power Infusion", spec = "Discipline" },
+        { spell = "Silence",        spec = "Shadow" },
+        { spell = "Pain Spike",     spec = "Shadow" },
+    },
+    ROGUE = {
+        { spell = "Cold Blood",      spec = "Assassination" },
+        { spell = "Adrenaline Rush",  spec = "Combat" },
+        { spell = "Preparation",      spec = "Subtlety" },
+    },
+    HUNTER = {
+        { spell = "Bestial Wrath",  spec = "Beast Mastery" },
+        { spell = "Intimidation",   spec = "Beast Mastery" },
+        { spell = "Scatter Shot",   spec = "Marksmanship" },
+        { spell = "Deterrence",     spec = "Survival" },
+    },
+    SHAMAN = {
+        { spell = "Elemental Mastery", spec = "Elemental" },
+        { spell = "Stormstrike",       spec = "Enhancement" },
+        { spell = "Nature's Swiftness", spec = "Restoration" },
+    },
+}
+
+function CH:DetectSpecByKeySpells()
+    local class = self.playerClass
+    if not class or not KEY_SPELLS[class] then return nil end
+    for _, entry in ipairs(KEY_SPELLS[class]) do
+        if self:FindSpell(entry.spell) then
+            return entry.spec
+        end
+    end
+    return nil
+end
+
+-------------------------------------------------------------------------------
+-- Combined detection: try talents first, fall back to key spells
+-------------------------------------------------------------------------------
+
+local function RunDetection()
     local prev = CH:GetActiveSpec()
     CH:DetectSpec()
+    -- If talent detection is ambiguous or tied, try key-spell fallback
+    local keySpec = CH:DetectSpecByKeySpells()
+    if keySpec and keySpec ~= CH.detectedSpec then
+        -- Key spell is more specific than talent-count tie-breaker
+        CH.detectedSpec = keySpec
+    end
     local new = CH:GetActiveSpec()
     if new ~= prev then
         CH.activeSpec = new
         CH:FireEvent("SPEC_CHANGED", new)
     end
+end
+
+-------------------------------------------------------------------------------
+-- Hook into the internal event bus
+-------------------------------------------------------------------------------
+
+CH:RegisterEvent("INIT", function()
+    CH:DetectSpec()
+    local keySpec = CH:DetectSpecByKeySpells()
+    if keySpec then CH.detectedSpec = keySpec end
+    CH.activeSpec = CH:GetActiveSpec()
 end)
+
+CH:RegisterEvent("TALENTS_CHANGED", RunDetection)
+
+-- Also re-detect on spellbook changes (fires after respec + trainer visit)
+CH:RegisterEvent("SPELLS_CHANGED", RunDetection)

@@ -173,19 +173,27 @@ end
 
 -- Exposed on CH so ConditionEngine can use it for seal-related conditions
 function CH:GetActiveSeal()
+    -- Use GetPlayerBuff to iterate buffs with correct time API
+    if hasBuffTimeAPI then
+        local idx = 0
+        while true do
+            local buffIdx = GetPlayerBuff(idx, "HELPFUL")
+            if buffIdx < 0 then break end
+            local tex = GetPlayerBuffTexture(buffIdx)
+            if tex and IsSealTexture(tex) then
+                local timeLeft = GetPlayerBuffTimeLeft(buffIdx)
+                return tex, timeLeft
+            end
+            idx = idx + 1
+        end
+    end
+    -- Fallback: UnitBuff scan (no time info)
     local i = 1
     while true do
         local tex = UnitBuff("player", i)
         if not tex then break end
         if IsSealTexture(tex) then
-            local timeLeft = nil
-            if hasBuffTimeAPI then
-                local buffIdx = GetPlayerBuff(i - 1, "HELPFUL")
-                if buffIdx and buffIdx >= 0 then
-                    timeLeft = GetPlayerBuffTimeLeft(buffIdx)
-                end
-            end
-            return tex, timeLeft
+            return tex, nil
         end
         i = i + 1
     end
